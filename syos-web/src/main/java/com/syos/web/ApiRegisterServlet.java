@@ -28,6 +28,7 @@ public class ApiRegisterServlet extends HttpServlet {
 
         String userId   = trim(extractJsonValue(body, "user_id"));
         String fullName = trim(extractJsonValue(body, "full_name"));
+        String contactNumber = trim(extractJsonValue(body, "contact_number"));
         String email    = trim(extractJsonValue(body, "email"));
         String password = extractJsonValue(body, "password");
 
@@ -49,7 +50,7 @@ public class ApiRegisterServlet extends HttpServlet {
             return;
         }
 
-        boolean ok = dao.registerUser(userId, fullName, email, password, DEFAULT_ROLE_ID);
+        boolean ok = dao.registerUser(userId, fullName, contactNumber, email, password, DEFAULT_ROLE_ID);
 
         if (ok) {
             resp.setStatus(HttpServletResponse.SC_CREATED);

@@ -29,6 +29,16 @@
         <url-pattern>/login</url-pattern>
     </servlet-mapping>
 
+    <!-- CORS Filter - MUST be first to handle preflight OPTIONS requests -->
+    <filter>
+        <filter-name>CorsFilter</filter-name>
+        <filter-class>com.syos.web.CorsFilter</filter-class>
+    </filter>
+
+    <filter-mapping>
+        <filter-name>CorsFilter</filter-name>
+        <url-pattern>/api/*</url-pattern>
+    </filter-mapping>
 
     <filter>
         <filter-name>AuthFilter</filter-name>
@@ -126,6 +136,17 @@
     <servlet-mapping>
         <servlet-name>ApiLogoutServlet</servlet-name>
         <url-pattern>/api/logout</url-pattern>
+    </servlet-mapping>
+
+    <!-- API Google Login (React) -->
+    <servlet>
+        <servlet-name>ApiGoogleLoginServlet</servlet-name>
+        <servlet-class>com.syos.web.ApiGoogleLoginServlet</servlet-class>
+    </servlet>
+
+    <servlet-mapping>
+        <servlet-name>ApiGoogleLoginServlet</servlet-name>
+        <url-pattern>/api/google-login</url-pattern>
     </servlet-mapping>
 
 

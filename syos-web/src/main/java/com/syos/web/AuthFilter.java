@@ -26,6 +26,7 @@ public class AuthFilter implements Filter {
                         path.equals("/register") ||
                         path.equals("/api/login") ||
                         path.equals("/api/register") ||
+                        path.equals("/api/google-login") ||  // Allow Google Sign-In
                         path.startsWith("/assets/") ||   // optional (if you have assets)
                         path.equals("/") ;               // optional
 

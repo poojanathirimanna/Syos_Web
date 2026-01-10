@@ -18,6 +18,7 @@ public class RegisterServlet extends HttpServlet {
 
         String userId = trim(req.getParameter("user_id"));
         String fullName = trim(req.getParameter("full_name"));
+        String contactNumber = trim(req.getParameter("contact_number"));
         String email = trim(req.getParameter("email"));
         String password = req.getParameter("password");
 
@@ -38,7 +39,7 @@ public class RegisterServlet extends HttpServlet {
             return;
         }
 
-        boolean ok = dao.registerUser(userId, fullName, email, password, DEFAULT_ROLE_ID);
+        boolean ok = dao.registerUser(userId, fullName, contactNumber ,  email, password, DEFAULT_ROLE_ID);
 
         if (ok) {
             resp.sendRedirect("login.html?msg=" + url("Account created successfully. Please login."));

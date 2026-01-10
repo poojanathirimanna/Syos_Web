@@ -38,6 +38,20 @@
             <version>0.4</version>
         </dependency>
 
+        <!-- Google OAuth Client -->
+        <dependency>
+            <groupId>com.google.api-client</groupId>
+            <artifactId>google-api-client</artifactId>
+            <version>2.2.0</version>
+        </dependency>
+
+        <!-- Google OAuth for ID token verification -->
+        <dependency>
+            <groupId>com.google.auth</groupId>
+            <artifactId>google-auth-library-oauth2-http</artifactId>
+            <version>1.19.0</version>
+        </dependency>
+
     </dependencies>
 
 

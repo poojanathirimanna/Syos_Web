@@ -30,7 +30,7 @@ export async function apiLogin(username, password) {
 }
 
 // REGISTER
-export async function apiRegister({ user_id, full_name, email, password }) {
+export async function apiRegister({ user_id, full_name, email, contact_number, password }) {
     const res = await fetch(`${BASE_URL}/api/register`, {
         method: "POST",
         headers: {
@@ -41,8 +41,23 @@ export async function apiRegister({ user_id, full_name, email, password }) {
             user_id,
             full_name,
             email,
+            contact_number,
             password,
         }),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GOOGLE LOGIN
+export async function apiGoogleLogin(credential) {
+    const res = await fetch(`${BASE_URL}/api/google-login`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify({ credential }),
     });
 
     return await parseJsonSafe(res);
