@@ -1,7 +1,130 @@
-<!doctype html>
-<html>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SYOS API Server</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            color: #333;
+        }
+        .container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            padding: 40px;
+            max-width: 600px;
+            width: 90%;
+        }
+        h1 {
+            color: #667eea;
+            margin: 0 0 10px 0;
+            font-size: 2.5em;
+        }
+        .status {
+            display: inline-block;
+            background: #10b981;
+            color: white;
+            padding: 5px 15px;
+            border-radius: 20px;
+            font-size: 0.9em;
+            margin-bottom: 20px;
+        }
+        .api-list {
+            background: #f8fafc;
+            border-radius: 10px;
+            padding: 20px;
+            margin: 20px 0;
+        }
+        .api-endpoint {
+            background: white;
+            padding: 12px;
+            margin: 8px 0;
+            border-radius: 8px;
+            border-left: 4px solid #667eea;
+            font-family: 'Courier New', monospace;
+            font-size: 0.9em;
+        }
+        .method {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-weight: bold;
+            margin-right: 10px;
+            font-size: 0.85em;
+        }
+        .post { background: #fbbf24; color: #78350f; }
+        .get { background: #34d399; color: #064e3b; }
+        .frontend-link {
+            background: #667eea;
+            color: white;
+            padding: 15px 30px;
+            border-radius: 10px;
+            text-decoration: none;
+            display: inline-block;
+            margin-top: 20px;
+            font-weight: bold;
+            transition: transform 0.2s;
+        }
+        .frontend-link:hover {
+            transform: translateY(-2px);
+            background: #5568d3;
+        }
+        .info {
+            color: #64748b;
+            font-size: 0.9em;
+            margin-top: 20px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+    </style>
+</head>
 <body>
-<h2>SYOS Web App ✅</h2>
-<a href="first">Test FirstServlet</a>
+    <div class="container">
+        <h1>🚀 SYOS API Server</h1>
+        <span class="status">✓ Running</span>
+
+        <p><strong>This is the backend API server.</strong></p>
+        <p>The frontend React application runs separately on port 5173.</p>
+
+        <div class="api-list">
+            <h3>📡 Available API Endpoints:</h3>
+            <div class="api-endpoint">
+                <span class="method post">POST</span> /api/login
+            </div>
+            <div class="api-endpoint">
+                <span class="method post">POST</span> /api/register
+            </div>
+            <div class="api-endpoint">
+                <span class="method post">POST</span> /api/google-login
+            </div>
+            <div class="api-endpoint">
+                <span class="method get">GET</span> /api/me
+            </div>
+            <div class="api-endpoint">
+                <span class="method post">POST</span> /api/logout
+            </div>
+        </div>
+
+        <a href="http://localhost:5173" class="frontend-link" target="_blank">
+            → Open Frontend Application
+        </a>
+
+        <div class="info">
+            <strong>Tech Stack:</strong><br>
+            Backend: Java Servlets + MySQL<br>
+            Frontend: React + Vite<br>
+            Authentication: Session + Google OAuth
+        </div>
+    </div>
 </body>
 </html>
+

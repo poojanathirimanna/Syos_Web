@@ -7,32 +7,10 @@
          version="6.0"
          metadata-complete="true">
 
-    <!-- First Servlet -->
-    <servlet>
-        <servlet-name>FirstServlet</servlet-name>
-        <servlet-class>com.syos.web.FirstServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>FirstServlet</servlet-name>
-        <url-pattern>/first</url-pattern>
-    </servlet-mapping>
-
-    <!-- Login Servlet -->
-    <servlet>
-        <servlet-name>LoginServlet</servlet-name>
-        <servlet-class>com.syos.web.LoginServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>LoginServlet</servlet-name>
-        <url-pattern>/login</url-pattern>
-    </servlet-mapping>
-
     <!-- CORS Filter - MUST be first to handle preflight OPTIONS requests -->
     <filter>
         <filter-name>CorsFilter</filter-name>
-        <filter-class>com.syos.web.CorsFilter</filter-class>
+        <filter-class>com.syos.web.presentation.filters.CorsFilter</filter-class>
     </filter>
 
     <filter-mapping>
@@ -40,42 +18,27 @@
         <url-pattern>/api/*</url-pattern>
     </filter-mapping>
 
+    <!-- Auth Filter - Protects authenticated routes -->
     <filter>
         <filter-name>AuthFilter</filter-name>
-        <filter-class>com.syos.web.AuthFilter</filter-class>
+        <filter-class>com.syos.web.presentation.filters.AuthFilter</filter-class>
     </filter>
-
-    <filter-mapping>
-        <filter-name>AuthFilter</filter-name>
-        <url-pattern>/pos/*</url-pattern>
-    </filter-mapping>
 
     <filter-mapping>
         <filter-name>AuthFilter</filter-name>
         <url-pattern>/api/*</url-pattern>
     </filter-mapping>
 
-    <!-- Register Servlet -->
-    <servlet>
-        <servlet-name>RegisterServlet</servlet-name>
-        <servlet-class>com.syos.web.RegisterServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>RegisterServlet</servlet-name>
-        <url-pattern>/register</url-pattern>
-    </servlet-mapping>
-
-
+    <!-- Welcome file -->
     <welcome-file-list>
-        <welcome-file>login.html</welcome-file>
         <welcome-file>index.html</welcome-file>
     </welcome-file-list>
+
 
     <!-- API Login (React) -->
     <servlet>
         <servlet-name>ApiLoginServlet</servlet-name>
-        <servlet-class>com.syos.web.ApiLoginServlet</servlet-class>
+        <servlet-class>com.syos.web.presentation.api.auth.ApiLoginServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
@@ -86,7 +49,7 @@
     <!-- API Register (React) -->
     <servlet>
         <servlet-name>ApiRegisterServlet</servlet-name>
-        <servlet-class>com.syos.web.ApiRegisterServlet</servlet-class>
+        <servlet-class>com.syos.web.presentation.api.auth.ApiRegisterServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
@@ -94,32 +57,11 @@
         <url-pattern>/api/register</url-pattern>
     </servlet-mapping>
 
-    <!-- Home Servlet -->
-    <servlet>
-        <servlet-name>HomeServlet</servlet-name>
-        <servlet-class>com.syos.web.HomeServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>HomeServlet</servlet-name>
-        <url-pattern>/home</url-pattern>
-    </servlet-mapping>
-
-    <!-- Logout Servlet -->
-    <servlet>
-        <servlet-name>LogoutServlet</servlet-name>
-        <servlet-class>com.syos.web.LogoutServlet</servlet-class>
-    </servlet>
-
-    <servlet-mapping>
-        <servlet-name>LogoutServlet</servlet-name>
-        <url-pattern>/logout</url-pattern>
-    </servlet-mapping>
 
     <!-- API Me (React) -->
     <servlet>
         <servlet-name>ApiMeServlet</servlet-name>
-        <servlet-class>com.syos.web.ApiMeServlet</servlet-class>
+        <servlet-class>com.syos.web.presentation.api.auth.ApiMeServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
@@ -130,7 +72,7 @@
     <!-- API Logout (React) -->
     <servlet>
         <servlet-name>ApiLogoutServlet</servlet-name>
-        <servlet-class>com.syos.web.ApiLogoutServlet</servlet-class>
+        <servlet-class>com.syos.web.presentation.api.auth.ApiLogoutServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>
@@ -141,7 +83,7 @@
     <!-- API Google Login (React) -->
     <servlet>
         <servlet-name>ApiGoogleLoginServlet</servlet-name>
-        <servlet-class>com.syos.web.ApiGoogleLoginServlet</servlet-class>
+        <servlet-class>com.syos.web.presentation.api.auth.ApiGoogleLoginServlet</servlet-class>
     </servlet>
 
     <servlet-mapping>

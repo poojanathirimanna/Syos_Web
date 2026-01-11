@@ -1,4 +1,4 @@
-package com.syos.web;
+package com.syos.web.presentation.api.auth;
 
 import com.syos.web.dao.UserDao;
 import jakarta.servlet.http.HttpServlet;
@@ -83,3 +83,4 @@ public class ApiLoginServlet extends HttpServlet {
         return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
+

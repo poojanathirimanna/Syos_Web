@@ -1,4 +1,4 @@
-package com.syos.web;
+package com.syos.web.presentation.api.auth;
 
 import com.syos.web.dao.UserDao;
 import jakarta.servlet.http.HttpServlet;
@@ -100,3 +100,4 @@ public class ApiRegisterServlet extends HttpServlet {
         return s == null || s.trim().isEmpty();
     }
 }
+
