@@ -1,6 +1,8 @@
 package com.syos.web.presentation.api.auth;
 
-import com.syos.web.dao.UserDao;
+import com.syos.web.application.dto.ApiResponse;
+import com.syos.web.application.dto.RegisterRequest;
+import com.syos.web.application.usecases.RegisterUseCase;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -10,8 +12,7 @@ import java.io.IOException;
 
 public class ApiRegisterServlet extends HttpServlet {
 
-    private final UserDao dao = new UserDao();
-    private static final int DEFAULT_ROLE_ID = 3; // Customer role
+    private final RegisterUseCase registerUseCase = new RegisterUseCase();
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -24,40 +25,35 @@ public class ApiRegisterServlet extends HttpServlet {
         addCors(resp);
         resp.setContentType("application/json; charset=UTF-8");
 
+        // Parse request
         String body = readBody(req);
-
-        String userId   = trim(extractJsonValue(body, "user_id"));
-        String fullName = trim(extractJsonValue(body, "full_name"));
-        String contactNumber = trim(extractJsonValue(body, "contact_number"));
-        String email    = trim(extractJsonValue(body, "email"));
+        String userId = extractJsonValue(body, "user_id");
+        String fullName = extractJsonValue(body, "full_name");
+        String contactNumber = extractJsonValue(body, "contact_number");
+        String email = extractJsonValue(body, "email");
         String password = extractJsonValue(body, "password");
 
-        if (isBlank(userId) || isBlank(fullName) || isBlank(email) || isBlank(password)) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"All fields are required.\"}");
-            return;
-        }
+        // Create DTO
+        RegisterRequest registerRequest = new RegisterRequest(userId, fullName, email, contactNumber, password);
 
-        if (dao.existsByUserId(userId)) {
-            resp.setStatus(HttpServletResponse.SC_CONFLICT);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"User ID already exists.\"}");
-            return;
-        }
+        // Execute use case
+        ApiResponse response = registerUseCase.execute(registerRequest);
 
-        if (dao.existsByEmail(email)) {
-            resp.setStatus(HttpServletResponse.SC_CONFLICT);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"Email already exists.\"}");
-            return;
-        }
-
-        boolean ok = dao.registerUser(userId, fullName, contactNumber, email, password, DEFAULT_ROLE_ID);
-
-        if (ok) {
+        // Handle response
+        if (response.isOk()) {
             resp.setStatus(HttpServletResponse.SC_CREATED);
-            resp.getWriter().write("{\"ok\":true,\"message\":\"Account created successfully.\"}");
+            resp.getWriter().write("{\"ok\":true,\"message\":\"" + escape(response.getMessage()) + "\"}");
         } else {
-            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"Registration failed.\"}");
+            int statusCode;
+            if (response.getMessage().contains("required")) {
+                statusCode = HttpServletResponse.SC_BAD_REQUEST;
+            } else if (response.getMessage().contains("exists")) {
+                statusCode = HttpServletResponse.SC_CONFLICT;
+            } else {
+                statusCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+            }
+            resp.setStatus(statusCode);
+            resp.getWriter().write("{\"ok\":false,\"message\":\"" + escape(response.getMessage()) + "\"}");
         }
     }
 
@@ -92,12 +88,8 @@ public class ApiRegisterServlet extends HttpServlet {
         return json.substring(firstQuote + 1, secondQuote);
     }
 
-    private static String trim(String s) {
-        return s == null ? null : s.trim();
-    }
-
-    private static boolean isBlank(String s) {
-        return s == null || s.trim().isEmpty();
+    private static String escape(String s) {
+        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
 

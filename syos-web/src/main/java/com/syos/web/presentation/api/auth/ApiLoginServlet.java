@@ -1,6 +1,8 @@
 package com.syos.web.presentation.api.auth;
 
-import com.syos.web.dao.UserDao;
+import com.syos.web.application.dto.ApiResponse;
+import com.syos.web.application.dto.LoginRequest;
+import com.syos.web.application.usecases.LoginUseCase;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -11,7 +13,7 @@ import java.io.IOException;
 
 public class ApiLoginServlet extends HttpServlet {
 
-    private final UserDao userDao = new UserDao();
+    private final LoginUseCase loginUseCase = new LoginUseCase();
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -24,27 +26,30 @@ public class ApiLoginServlet extends HttpServlet {
         addCors(resp);
         resp.setContentType("application/json; charset=UTF-8");
 
+        // Parse request
         String body = readBody(req);
         String username = extractJsonValue(body, "username");
         String password = extractJsonValue(body, "password");
 
-        if (username == null || password == null || username.isBlank() || password.isBlank()) {
-            resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"Missing username/password\"}");
-            return;
-        }
+        // Create DTO
+        LoginRequest loginRequest = new LoginRequest(username, password);
 
-        boolean ok = userDao.isValidUser(username, password);
+        // Execute use case
+        ApiResponse response = loginUseCase.execute(loginRequest);
 
-        if (ok) {
+        // Handle response
+        if (response.isOk()) {
             HttpSession session = req.getSession(true);
             session.setAttribute("username", username);
 
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.getWriter().write("{\"ok\":true,\"username\":\"" + escape(username) + "\"}");
         } else {
-            resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"Invalid credentials\"}");
+            int statusCode = response.getMessage().contains("required")
+                    ? HttpServletResponse.SC_BAD_REQUEST
+                    : HttpServletResponse.SC_UNAUTHORIZED;
+            resp.setStatus(statusCode);
+            resp.getWriter().write("{\"ok\":false,\"message\":\"" + escape(response.getMessage()) + "\"}");
         }
     }
 
