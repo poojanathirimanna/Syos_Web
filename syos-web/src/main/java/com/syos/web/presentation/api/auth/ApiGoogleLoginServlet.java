@@ -18,7 +18,7 @@ import java.util.UUID;
 public class ApiGoogleLoginServlet extends HttpServlet {
 
     private final UserDao dao = new UserDao();
-    private static final int DEFAULT_ROLE_ID = 2; // Same as regular registration
+    private static final int DEFAULT_ROLE_ID = 3; // Customer role
 
     // Replace this with your actual Google Client ID from Google Cloud Console
     private static final String GOOGLE_CLIENT_ID = "997091192220-ulfhf1i9i9uc7qikfupkbgb4u67pjk28.apps.googleusercontent.com";

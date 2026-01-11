@@ -11,7 +11,7 @@ import java.io.IOException;
 public class ApiRegisterServlet extends HttpServlet {
 
     private final UserDao dao = new UserDao();
-    private static final int DEFAULT_ROLE_ID = 2; // same as your RegisterServlet
+    private static final int DEFAULT_ROLE_ID = 3; // Customer role
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {
