@@ -78,12 +78,32 @@ public class ApiGoogleLoginServlet extends HttpServlet {
 
             if (existingUserId != null) {
                 // User exists, log them in
+                UserDao.UserDetails userDetails = dao.getUserDetails(existingUserId);
+
                 HttpSession session = req.getSession();
                 session.setAttribute("username", existingUserId);
+
+                if (userDetails != null) {
+                    session.setAttribute("roleId", userDetails.getRoleId());
+                    session.setAttribute("fullName", userDetails.getFullName());
+                }
+
                 session.setMaxInactiveInterval(30 * 60); // 30 minutes
 
                 resp.setStatus(HttpServletResponse.SC_OK);
-                resp.getWriter().write("{\"ok\":true,\"message\":\"Login successful.\",\"userId\":\"" + existingUserId + "\"}");
+
+                // Build JSON response with user details
+                StringBuilder json = new StringBuilder();
+                json.append("{\"ok\":true,\"message\":\"Login successful.\",\"userId\":\"").append(existingUserId).append("\"");
+
+                if (userDetails != null) {
+                    json.append(",\"roleId\":").append(userDetails.getRoleId());
+                    json.append(",\"fullName\":\"").append(escape(userDetails.getFullName() != null ? userDetails.getFullName() : "")).append("\"");
+                    json.append(",\"email\":\"").append(escape(userDetails.getEmail() != null ? userDetails.getEmail() : "")).append("\"");
+                }
+
+                json.append("}");
+                resp.getWriter().write(json.toString());
                 return;
             }
 
@@ -102,10 +122,14 @@ public class ApiGoogleLoginServlet extends HttpServlet {
                 // Auto-login the new user
                 HttpSession session = req.getSession();
                 session.setAttribute("username", newUserId);
+                session.setAttribute("roleId", DEFAULT_ROLE_ID);
+                session.setAttribute("fullName", name);
                 session.setMaxInactiveInterval(30 * 60);
 
                 resp.setStatus(HttpServletResponse.SC_CREATED);
-                resp.getWriter().write("{\"ok\":true,\"message\":\"Account created and logged in.\",\"userId\":\"" + newUserId + "\"}");
+                resp.getWriter().write("{\"ok\":true,\"message\":\"Account created and logged in.\",\"userId\":\""
+                    + newUserId + "\",\"roleId\":" + DEFAULT_ROLE_ID
+                    + ",\"fullName\":\"" + escape(name) + "\"}");
             } else {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 resp.getWriter().write("{\"ok\":false,\"message\":\"Failed to create account.\"}");
@@ -169,6 +193,11 @@ public class ApiGoogleLoginServlet extends HttpServlet {
         int secondQuote = json.indexOf("\"", firstQuote + 1);
         if (secondQuote < 0) return null;
         return json.substring(firstQuote + 1, secondQuote);
+    }
+
+    private static String escape(String s) {
+        if (s == null) return "";
+        return s.replace("\\", "\\\\").replace("\"", "\\\"");
     }
 }
 

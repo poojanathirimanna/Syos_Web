@@ -3,6 +3,9 @@ import Login from "./pages/Login.jsx";
 import Home from "./pages/Home.jsx";
 import Register from "./pages/Register.jsx";
 import ProtectedRoute from "./pages/ProtectedRoute.jsx";
+import AdminDashboard from "./pages/AdminDashboard.jsx";
+import CashierDashboard from "./pages/CashierDashboard.jsx";
+import CustomerDashboard from "./pages/CustomerDashboard.jsx";
 
 export default function App() {
     return (
@@ -17,6 +20,34 @@ export default function App() {
                 element={
                     <ProtectedRoute>
                         <Home />
+                    </ProtectedRoute>
+                }
+            />
+
+            {/* Role-specific Dashboards */}
+            <Route
+                path="/admin/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <AdminDashboard />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/cashier/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <CashierDashboard />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/customer/dashboard"
+                element={
+                    <ProtectedRoute>
+                        <CustomerDashboard />
                     </ProtectedRoute>
                 }
             />

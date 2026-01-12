@@ -42,6 +42,76 @@ public class UserDao {
         }
     }
 
+    /**
+     * Get user details by user ID (for login)
+     * Returns null if user not found
+     */
+    public UserDetails getUserDetails(String userId) {
+        String sql = "SELECT user_id, full_name, email, contact_number, role_id FROM users WHERE user_id = ? LIMIT 1";
+
+        try (Connection con = Db.getConnection();
+             PreparedStatement ps = con.prepareStatement(sql)) {
+
+            ps.setString(1, userId);
+
+            try (ResultSet rs = ps.executeQuery()) {
+                if (rs.next()) {
+                    return new UserDetails(
+                            rs.getString("user_id"),
+                            rs.getString("full_name"),
+                            rs.getString("email"),
+                            rs.getString("contact_number"),
+                            rs.getInt("role_id")
+                    );
+                }
+                return null;
+            }
+
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
+    }
+
+    /**
+     * Inner class to hold user details
+     */
+    public static class UserDetails {
+        private final String userId;
+        private final String fullName;
+        private final String email;
+        private final String contactNumber;
+        private final int roleId;
+
+        public UserDetails(String userId, String fullName, String email, String contactNumber, int roleId) {
+            this.userId = userId;
+            this.fullName = fullName;
+            this.email = email;
+            this.contactNumber = contactNumber;
+            this.roleId = roleId;
+        }
+
+        public String getUserId() {
+            return userId;
+        }
+
+        public String getFullName() {
+            return fullName;
+        }
+
+        public String getEmail() {
+            return email;
+        }
+
+        public String getContactNumber() {
+            return contactNumber;
+        }
+
+        public int getRoleId() {
+            return roleId;
+        }
+    }
+
     /* =========================
        REGISTER – VALIDATIONS
        ========================= */

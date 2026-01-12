@@ -2,6 +2,7 @@ package com.syos.web.presentation.api.auth;
 
 import com.syos.web.application.dto.ApiResponse;
 import com.syos.web.application.dto.LoginRequest;
+import com.syos.web.application.dto.UserDTO;
 import com.syos.web.application.usecases.LoginUseCase;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -42,8 +43,29 @@ public class ApiLoginServlet extends HttpServlet {
             HttpSession session = req.getSession(true);
             session.setAttribute("username", username);
 
+            // Get user data from response
+            UserDTO userData = (UserDTO) response.getData();
+
+            // Store role_id in session as well
+            if (userData != null) {
+                session.setAttribute("roleId", userData.getRoleId());
+                session.setAttribute("fullName", userData.getFullName());
+            }
+
             resp.setStatus(HttpServletResponse.SC_OK);
-            resp.getWriter().write("{\"ok\":true,\"username\":\"" + escape(username) + "\"}");
+
+            // Build JSON response with user details
+            StringBuilder json = new StringBuilder();
+            json.append("{\"ok\":true,\"username\":\"").append(escape(username)).append("\"");
+
+            if (userData != null) {
+                json.append(",\"roleId\":").append(userData.getRoleId());
+                json.append(",\"fullName\":\"").append(escape(userData.getFullName() != null ? userData.getFullName() : "")).append("\"");
+                json.append(",\"email\":\"").append(escape(userData.getEmail() != null ? userData.getEmail() : "")).append("\"");
+            }
+
+            json.append("}");
+            resp.getWriter().write(json.toString());
         } else {
             int statusCode = response.getMessage().contains("required")
                     ? HttpServletResponse.SC_BAD_REQUEST

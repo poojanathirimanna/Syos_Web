@@ -29,8 +29,18 @@ public class ApiMeServlet extends HttpServlet {
             return;
         }
 
+        // Get additional user info from session
+        String fullName = (session.getAttribute("fullName") != null)
+            ? (String) session.getAttribute("fullName")
+            : username;
+        Integer roleId = (session.getAttribute("roleId") != null)
+            ? (Integer) session.getAttribute("roleId")
+            : 3;  // Default to customer if not set
+
         resp.setStatus(HttpServletResponse.SC_OK);
-        resp.getWriter().write("{\"loggedIn\":true,\"username\":\"" + escape(username) + "\"}");
+        resp.getWriter().write("{\"loggedIn\":true,\"username\":\"" + escape(username)
+            + "\",\"fullName\":\"" + escape(fullName)
+            + "\",\"roleId\":" + roleId + "}");
     }
 
     private static void addCors(HttpServletResponse resp) {

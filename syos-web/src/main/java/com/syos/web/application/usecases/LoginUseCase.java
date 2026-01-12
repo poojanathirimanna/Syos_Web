@@ -39,11 +39,23 @@ public class LoginUseCase {
         boolean isValid = userDao.isValidUser(username, password);
 
         if (isValid) {
-            // Create user DTO to return
-            UserDTO userDTO = new UserDTO();
-            userDTO.setUserId(username);
+            // Fetch complete user details including role_id
+            UserDao.UserDetails userDetails = userDao.getUserDetails(username);
 
-            return ApiResponse.success("Login successful", userDTO);
+            if (userDetails != null) {
+                // Create user DTO to return with all details
+                UserDTO userDTO = new UserDTO(
+                    userDetails.getUserId(),
+                    userDetails.getFullName(),
+                    userDetails.getEmail(),
+                    userDetails.getContactNumber(),
+                    userDetails.getRoleId()
+                );
+
+                return ApiResponse.success("Login successful", userDTO);
+            } else {
+                return ApiResponse.error("Unable to fetch user details");
+            }
         } else {
             return ApiResponse.error("Invalid credentials");
         }

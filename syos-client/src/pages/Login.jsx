@@ -17,8 +17,25 @@ export default function Login() {
 
         try {
             const res = await apiLogin(username, password);
-            if (res.ok) nav("/home");
-            else setMsg(res.message);
+            if (res.ok) {
+                // Role-based redirection
+                // roleId: 1 = Main Manager, 2 = Cashier, 3 = Customer
+                switch(res.roleId) {
+                    case 1:
+                        nav("/admin/dashboard");  // Main Manager
+                        break;
+                    case 2:
+                        nav("/cashier/dashboard");  // Cashier
+                        break;
+                    case 3:
+                        nav("/customer/dashboard");  // Customer
+                        break;
+                    default:
+                        nav("/home");  // Fallback
+                }
+            } else {
+                setMsg(res.message);
+            }
         } catch {
             setMsg("Server error");
         }
@@ -29,7 +46,21 @@ export default function Login() {
         try {
             const res = await apiGoogleLogin(credentialResponse.credential);
             if (res.ok) {
-                nav("/home");
+                // Role-based redirection
+                // roleId: 1 = Main Manager, 2 = Cashier, 3 = Customer
+                switch(res.roleId) {
+                    case 1:
+                        nav("/admin/dashboard");  // Main Manager
+                        break;
+                    case 2:
+                        nav("/cashier/dashboard");  // Cashier
+                        break;
+                    case 3:
+                        nav("/customer/dashboard");  // Customer
+                        break;
+                    default:
+                        nav("/home");  // Fallback
+                }
             } else {
                 setMsg(res.message || "Google login failed");
             }
