@@ -3,9 +3,6 @@ import Login from "./pages/Login.jsx";
 import Home from "./pages/Home.jsx";
 import Register from "./pages/Register.jsx";
 import ProtectedRoute from "./pages/ProtectedRoute.jsx";
-import AdminDashboard from "./pages/AdminDashboard.jsx";
-import CashierDashboard from "./pages/CashierDashboard.jsx";
-import CustomerDashboard from "./pages/CustomerDashboard.jsx";
 
 export default function App() {
     return (
@@ -24,33 +21,13 @@ export default function App() {
                 }
             />
 
-            {/* Role-specific Dashboards */}
-            <Route
-                path="/admin/dashboard"
-                element={
-                    <ProtectedRoute>
-                        <AdminDashboard />
-                    </ProtectedRoute>
-                }
-            />
+            {/* Redirect all dashboard routes to /home - Home.jsx will handle role-based routing */}
+            <Route path="/admin/dashboard" element={<Navigate to="/home" replace />} />
+            <Route path="/cashier/dashboard" element={<Navigate to="/home" replace />} />
+            <Route path="/customer/dashboard" element={<Navigate to="/home" replace />} />
 
-            <Route
-                path="/cashier/dashboard"
-                element={
-                    <ProtectedRoute>
-                        <CashierDashboard />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route
-                path="/customer/dashboard"
-                element={
-                    <ProtectedRoute>
-                        <CustomerDashboard />
-                    </ProtectedRoute>
-                }
-            />
+            {/* Fallback */}
+            <Route path="*" element={<Navigate to="/login" />} />
         </Routes>
     );
 }

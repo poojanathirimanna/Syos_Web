@@ -1,28 +1,10 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { apiMe, apiLogout } from "../services/api";
+import React from "react";
 
-export default function CustomerDashboard() {
-    const [username, setUsername] = useState("");
-    const [fullName, setFullName] = useState("");
-    const nav = useNavigate();
+export default function CustomerDashboard({ user, onLogout }) {
+    console.log("🏠 CustomerDashboard props:", { user: user?.username, onLogout: typeof onLogout });
 
-    useEffect(() => {
-        (async () => {
-            const data = await apiMe();
-            if (data?.loggedIn) {
-                setUsername(data.username);
-                setFullName(data.fullName || data.username);
-            } else {
-                nav("/login");
-            }
-        })();
-    }, [nav]);
-
-    const onLogout = async () => {
-        await apiLogout();
-        nav("/login");
-    };
+    const username = user?.username || "Customer";
+    const fullName = user?.fullName || user?.full_name || username;
 
     return (
         <>

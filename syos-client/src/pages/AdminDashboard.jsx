@@ -1,172 +1,251 @@
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { apiMe, apiLogout } from "../services/api";
+import { useState } from "react";
+import Sidebar from "../components/common/Sidebar";
+import Header from "../components/common/Header";
+import StatCard from "../components/dashboard/StatCard";
+import CompanyCard from "../components/dashboard/CompanyCard";
+import syosLogo from "../assets/syos-logo-text.png";
 
-export default function AdminDashboard() {
-    const [username, setUsername] = useState("");
-    const [fullName, setFullName] = useState("");
-    const nav = useNavigate();
+export default function AdminDashboard({ user, onLogout }) {
+    console.log("🎯 AdminDashboard props:", { user: user?.username, onLogout: typeof onLogout });
 
-    useEffect(() => {
-        (async () => {
-            const data = await apiMe();
-            if (data?.loggedIn) {
-                setUsername(data.username);
-                setFullName(data.fullName || data.username);
-            } else {
-                nav("/login");
-            }
-        })();
-    }, [nav]);
+    const [activeMenu, setActiveMenu] = useState("dashboard");
+    const [sidebarOpen, setSidebarOpen] = useState(true);
 
-    const onLogout = async () => {
-        await apiLogout();
-        nav("/login");
-    };
+    const menuItems = [
+        { id: "dashboard", icon: "📊", label: "Dashboard" },
+        { id: "admin", icon: "👨‍💼", label: "Admin Dashboard" },
+        { id: "brand", icon: "🏷️", label: "Brand Dashboard" },
+        { id: "payments", icon: "💳", label: "Payments" },
+        { id: "campaign", icon: "📢", label: "Campaign" },
+        { id: "user", icon: "👤", label: "User" },
+        { id: "merchant", icon: "🏪", label: "Merchant" },
+        { id: "product", icon: "📦", label: "Product" },
+        { id: "faq", icon: "❓", label: "FAQ" },
+        { id: "reports", icon: "📋", label: "Reports" },
+        { id: "feedback", icon: "⭐", label: "Feedback" },
+    ];
+
+    const companies = [
+        { name: "DSI", color: "blue" },
+        { name: "MA's Kitchen", color: "gray" },
+        { name: "Touch of Nature", color: "cyan" },
+        { name: "Company Name", color: "pink" },
+        { name: "Company Name", color: "purple" },
+    ];
 
     return (
         <>
             <style>{`
+                * {
+                    margin: 0;
+                    padding: 0;
+                    box-sizing: border-box;
+                }
+                
                 .dashboard-container {
+                    display: flex;
                     min-height: 100vh;
-                    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-                    padding: 20px;
+                    background: #f5f5f5;
+                    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
                 }
-                .dashboard-header {
-                    background: white;
-                    padding: 20px 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+                
+                .main-content {
+                    flex: 1;
                     display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    margin-bottom: 30px;
+                    flex-direction: column;
                 }
-                .dashboard-title {
-                    margin: 0;
-                    color: #667eea;
-                    font-size: 28px;
+                
+                .content-area {
+                    flex: 1;
+                    padding: 32px;
+                    overflow-y: auto;
                 }
-                .user-info {
-                    display: flex;
-                    align-items: center;
-                    gap: 20px;
-                }
-                .user-name {
-                    font-weight: 600;
-                    color: #333;
-                }
-                .role-badge {
-                    background: #667eea;
-                    color: white;
-                    padding: 5px 15px;
-                    border-radius: 20px;
-                    font-size: 12px;
-                    font-weight: 600;
-                }
-                .logout-btn {
-                    background: #ef4444;
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 5px;
-                    cursor: pointer;
-                    font-weight: 600;
-                    transition: background 0.2s;
-                }
-                .logout-btn:hover {
-                    background: #dc2626;
-                }
-                .dashboard-content {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-                    gap: 20px;
-                    max-width: 1200px;
-                }
-                .dashboard-card {
-                    background: white;
-                    padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    transition: transform 0.2s;
-                }
-                .dashboard-card:hover {
-                    transform: translateY(-5px);
-                    box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-                }
-                .card-title {
-                    margin: 0 0 10px 0;
-                    color: #667eea;
+                
+                .section-title {
                     font-size: 20px;
+                    color: #888;
+                    font-weight: 600;
+                    text-transform: uppercase;
+                    letter-spacing: 1px;
+                    margin-bottom: 24px;
                 }
-                .card-description {
-                    color: #666;
-                    margin: 0;
+                
+                .stats-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                    gap: 20px;
+                    margin-bottom: 40px;
                 }
-                .welcome-message {
-                    background: white;
-                    padding: 30px;
-                    border-radius: 10px;
-                    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-                    margin-bottom: 30px;
-                    max-width: 1200px;
+                
+                .platform-stats {
+                    display: flex;
+                    justify-content: space-around;
+                    align-items: center;
+                    margin-bottom: 16px;
                 }
-                .welcome-message h2 {
-                    margin: 0 0 10px 0;
+                
+                .platform-item {
+                    text-align: center;
+                }
+                
+                .platform-icon {
+                    font-size: 40px;
+                    margin-bottom: 8px;
+                }
+                
+                .platform-count {
+                    font-size: 32px;
+                    font-weight: 700;
                     color: #333;
                 }
-                .welcome-message p {
-                    margin: 0;
-                    color: #666;
+                
+                .companies-section {
+                    margin-top: 40px;
+                }
+                
+                .companies-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+                    gap: 20px;
+                }
+                
+                @media (max-width: 768px) {
+                    .stats-grid {
+                        grid-template-columns: 1fr;
+                    }
+                    
+                    .companies-grid {
+                        grid-template-columns: 1fr;
+                    }
                 }
             `}</style>
 
             <div className="dashboard-container">
-                <div className="dashboard-header">
-                    <h1 className="dashboard-title">🛡️ Main Manager Dashboard</h1>
-                    <div className="user-info">
-                        <span className="user-name">{fullName}</span>
-                        <span className="role-badge">MAIN MANAGER</span>
-                        <button onClick={onLogout} className="logout-btn">Logout</button>
-                    </div>
-                </div>
+                <Sidebar
+                    logo={syosLogo}
+                    menuItems={menuItems}
+                    activeMenu={activeMenu}
+                    onMenuClick={setActiveMenu}
+                    isOpen={sidebarOpen}
+                    accentColor="#ffd54f"
+                />
 
-                <div className="welcome-message">
-                    <h2>Welcome back, {fullName}!</h2>
-                    <p>You have full administrative access to the system.</p>
-                </div>
+                <main className="main-content">
+                    {console.log("📤 Passing to Header:", { user: user?.username, onLogout: typeof onLogout })}
+                    <Header
+                        user={user}
+                        onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
+                        onLogout={onLogout}
+                        showNotifications={true}
+                    />
 
-                <div className="dashboard-content">
-                    <div className="dashboard-card">
-                        <h3 className="card-title">👥 User Management</h3>
-                        <p className="card-description">Manage users, roles, and permissions</p>
-                    </div>
+                    <div className="content-area">
+                        {activeMenu === "dashboard" && (
+                            <>
+                                <h1 className="section-title">Admin Overview</h1>
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">📊 Analytics</h3>
-                        <p className="card-description">View system analytics and reports</p>
-                    </div>
+                                <div className="stats-grid">
+                                    <StatCard
+                                        label="No. of Companies"
+                                        value="15"
+                                        buttonText="View Companies"
+                                        onButtonClick={() => console.log('View Companies')}
+                                    />
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">💰 Financial Overview</h3>
-                        <p className="card-description">Monitor revenue and transactions</p>
-                    </div>
+                                    <StatCard
+                                        label="No. of Brands"
+                                        value="14"
+                                        buttonText="View Brands"
+                                    />
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">📦 Inventory Control</h3>
-                        <p className="card-description">Oversee inventory and stock levels</p>
-                    </div>
+                                    <StatCard
+                                        label="Engagement Count"
+                                        value="92"
+                                        buttonText="View Details"
+                                    />
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">⚙️ System Settings</h3>
-                        <p className="card-description">Configure system preferences</p>
-                    </div>
+                                    <StatCard
+                                        label="No. of Rewards"
+                                        value="1586"
+                                        buttonText="View Details"
+                                    />
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">📝 Reports</h3>
-                        <p className="card-description">Generate and export reports</p>
+                                    <StatCard
+                                        label="Total Customers"
+                                        value="242"
+                                        buttonText="View Customers"
+                                    />
+
+                                    <StatCard>
+                                        <div className="platform-stats">
+                                            <div className="platform-item">
+                                                <div className="platform-icon">🤖</div>
+                                                <div className="platform-count">242</div>
+                                            </div>
+                                            <div className="platform-item">
+                                                <div className="platform-icon">🍎</div>
+                                                <div className="platform-count">0</div>
+                                            </div>
+                                        </div>
+                                    </StatCard>
+
+                                    <StatCard
+                                        label="Ongoing Campaigns"
+                                        value="47"
+                                        buttonText="View Campaigns"
+                                    />
+
+                                    <StatCard
+                                        label="Campaigns Ending Soon"
+                                        value="0"
+                                        buttonText="View Campaigns"
+                                    />
+                                </div>
+
+                                <div className="companies-section">
+                                    <h2 className="section-title">Company Drill Down</h2>
+                                    <h3 className="section-title" style={{fontSize: '18px', color: '#aaa', marginTop: '20px'}}>
+                                        Companies
+                                    </h3>
+
+                                    <div className="companies-grid">
+                                        {companies.map((company, index) => (
+                                            <CompanyCard
+                                                key={index}
+                                                name={company.name}
+                                                colorScheme={company.color}
+                                                onClick={() => console.log(`Clicked ${company.name}`)}
+                                            />
+                                        ))}
+                                    </div>
+                                </div>
+                            </>
+                        )}
+
+                        {activeMenu === "admin" && (
+                            <div>
+                                <h1 className="section-title">Admin Dashboard</h1>
+                                <p style={{color: '#666'}}>Admin dashboard content goes here...</p>
+                            </div>
+                        )}
+
+                        {activeMenu === "brand" && (
+                            <div>
+                                <h1 className="section-title">Brand Dashboard</h1>
+                                <p style={{color: '#666'}}>Brand dashboard content goes here...</p>
+                            </div>
+                        )}
+
+                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && (
+                            <div>
+                                <h1 className="section-title">
+                                    {menuItems.find(m => m.id === activeMenu)?.label}
+                                </h1>
+                                <p style={{color: '#666'}}>Content for {activeMenu} section coming soon...</p>
+                            </div>
+                        )}
                     </div>
-                </div>
+                </main>
             </div>
         </>
     );
