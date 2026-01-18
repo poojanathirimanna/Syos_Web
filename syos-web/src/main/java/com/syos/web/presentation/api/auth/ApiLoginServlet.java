@@ -36,7 +36,7 @@ public class ApiLoginServlet extends HttpServlet {
         resp.setContentType("application/json; charset=UTF-8");
 
         // 🆕 ADD: Log request for concurrency tracking
-        String requestId = RequestLogger.logRequest("LOGIN", null, req.getRemoteAddr());
+        String requestId = RequestLogger.logRequest("LOGIN", null, req.getRemoteAddr(), Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
 
         try {

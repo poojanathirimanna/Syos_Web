@@ -1,8 +1,8 @@
 package com.syos.web.presentation.api.auth;
 
 import com.google.gson.Gson;
-import com.syos.web.concurrency.SessionManager;  // 🆕 ADD
-import com.syos.web.concurrency.RequestLogger;   // 🆕 ADD
+import com.syos.web.concurrency.SessionManager;
+import com.syos.web.concurrency.RequestLogger;
 
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -30,17 +30,23 @@ public class ApiLogoutServlet extends HttpServlet {
         resp.setContentType("application/json; charset=UTF-8");
 
         HttpSession session = req.getSession(false);
-        String userId = session != null ? (String) session.getAttribute("username") : null;
 
-        // 🆕 ADD: Log request
-        String requestId = RequestLogger.logRequest("LOGOUT", userId, req.getRemoteAddr());
+        // Get userId FIRST before invalidating session
+        String userId = null;
+        String sessionId = null;
+
+        if (session != null) {
+            userId = (String) session.getAttribute("username");
+            sessionId = (String) session.getAttribute("sessionId");
+        }
+
+        // NOW log with the userId (fixes "Request ID not found" error)
+        String requestId = RequestLogger.logRequest("LOGOUT", userId, req.getRemoteAddr(), Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
 
         try {
             if (session != null) {
-                String sessionId = (String) session.getAttribute("sessionId");
-
-                // 🆕 ADD: Invalidate session in SessionManager
+                // Invalidate session in SessionManager
                 if (sessionId != null) {
                     SessionManager.invalidateSession(sessionId);
                 }
@@ -52,7 +58,7 @@ public class ApiLogoutServlet extends HttpServlet {
             resp.setStatus(HttpServletResponse.SC_OK);
             resp.getWriter().write(gson.toJson(Map.of("ok", true)));
 
-            // 🆕 ADD: Log success
+            // Log success
             RequestLogger.updateStatus(requestId, "COMPLETED", startTime);
 
         } catch (Exception e) {
@@ -64,7 +70,7 @@ public class ApiLogoutServlet extends HttpServlet {
                     "message", "Logout failed: " + e.getMessage()
             )));
 
-            // 🆕 ADD: Log error
+            // Log error
             RequestLogger.updateStatus(requestId, "FAILED", startTime);
         }
     }

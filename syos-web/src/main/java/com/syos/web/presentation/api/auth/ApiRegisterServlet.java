@@ -32,7 +32,7 @@ public class ApiRegisterServlet extends HttpServlet {
         resp.setContentType("application/json; charset=UTF-8");
 
         // 🆕 ADD: Log request
-        String requestId = RequestLogger.logRequest("REGISTER", null, req.getRemoteAddr());
+        String requestId = RequestLogger.logRequest("REGISTER", null, req.getRemoteAddr(), Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
 
         try {

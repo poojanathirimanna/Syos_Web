@@ -38,7 +38,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
         resp.setContentType("application/json; charset=UTF-8");
 
         // Log request
-        String requestId = RequestLogger.logRequest("GOOGLE_LOGIN", null, req.getRemoteAddr());
+        String requestId = RequestLogger.logRequest("GOOGLE_LOGIN", null, req.getRemoteAddr(), Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
 
         try {

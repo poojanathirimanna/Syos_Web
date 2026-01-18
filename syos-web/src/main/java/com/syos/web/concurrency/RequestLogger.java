@@ -20,7 +20,16 @@ public class RequestLogger {
      * @param ipAddress Client IP address
      * @return Request ID for tracking this request
      */
-    public static String logRequest(String requestType, String userId, String ipAddress) {
+    /**
+     * Log a new request to the database
+     *
+     * @param requestType Type of request (e.g., "LOGIN", "CREATE_BILL")
+     * @param userId User ID making the request (can be null)
+     * @param ipAddress Client IP address
+     * @param servletThread The name of the servlet thread handling this request
+     * @return Request ID for tracking this request
+     */
+    public static String logRequest(String requestType, String userId, String ipAddress, String servletThread) {
         // Generate unique ID for this request
         String requestId = UUID.randomUUID().toString();
 
@@ -40,13 +49,12 @@ public class RequestLogger {
                 stmt.setString(1, requestId);
                 stmt.setString(2, requestType);
                 stmt.setString(3, userId);
-                stmt.setString(4, Thread.currentThread().getName());
+                stmt.setString(4, servletThread);  // ← Use the passed parameter, not Thread.currentThread()
 
                 stmt.executeUpdate();
 
                 System.out.println("✓ Request logged: " + requestType +
-                        " [" + requestId + "] on thread: " +
-                        Thread.currentThread().getName());
+                        " [" + requestId + "] on thread: " + servletThread);
 
             } catch (SQLException e) {
                 System.err.println("❌ Failed to log request: " + e.getMessage());
@@ -60,7 +68,7 @@ public class RequestLogger {
                     System.err.println("Error closing resources: " + e.getMessage());
                 }
             }
-        }).start();
+        }, "RequestLogger-" + requestId.substring(0, 8)).start();
 
         return requestId;
     }

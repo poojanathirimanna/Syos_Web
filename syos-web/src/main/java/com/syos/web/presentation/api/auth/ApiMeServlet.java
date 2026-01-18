@@ -33,7 +33,7 @@ public class ApiMeServlet extends HttpServlet {
         String userId = session != null ? (String) session.getAttribute("username") : null;
 
         // 🆕 ADD: Log request
-        String requestId = RequestLogger.logRequest("CHECK_AUTH", userId, req.getRemoteAddr());
+        String requestId = RequestLogger.logRequest("CHECK_AUTH", null, req.getRemoteAddr(), Thread.currentThread().getName());
         long startTime = System.currentTimeMillis();
 
         try {
