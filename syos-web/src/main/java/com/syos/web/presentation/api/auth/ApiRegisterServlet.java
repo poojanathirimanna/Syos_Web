@@ -1,18 +1,24 @@
 package com.syos.web.presentation.api.auth;
 
+import com.google.gson.Gson;
 import com.syos.web.application.dto.ApiResponse;
 import com.syos.web.application.dto.RegisterRequest;
 import com.syos.web.application.usecases.RegisterUseCase;
+import com.syos.web.concurrency.RequestLogger;  // 🆕 ADD
+
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 
-import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.Map;
 
+@WebServlet("/api/auth/register")
 public class ApiRegisterServlet extends HttpServlet {
 
     private final RegisterUseCase registerUseCase = new RegisterUseCase();
+    private final Gson gson = new Gson();
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -25,35 +31,68 @@ public class ApiRegisterServlet extends HttpServlet {
         addCors(resp);
         resp.setContentType("application/json; charset=UTF-8");
 
-        // Parse request
-        String body = readBody(req);
-        String userId = extractJsonValue(body, "user_id");
-        String fullName = extractJsonValue(body, "full_name");
-        String contactNumber = extractJsonValue(body, "contact_number");
-        String email = extractJsonValue(body, "email");
-        String password = extractJsonValue(body, "password");
+        // 🆕 ADD: Log request
+        String requestId = RequestLogger.logRequest("REGISTER", null, req.getRemoteAddr());
+        long startTime = System.currentTimeMillis();
 
-        // Create DTO
-        RegisterRequest registerRequest = new RegisterRequest(userId, fullName, email, contactNumber, password);
+        try {
+            // Parse JSON request
+            Map<String, String> requestData = gson.fromJson(req.getReader(), Map.class);
 
-        // Execute use case
-        ApiResponse response = registerUseCase.execute(registerRequest);
+            // Create DTO
+            RegisterRequest registerRequest = new RegisterRequest(
+                    requestData.get("user_id"),
+                    requestData.get("full_name"),
+                    requestData.get("email"),
+                    requestData.get("contact_number"),
+                    requestData.get("password")
+            );
 
-        // Handle response
-        if (response.isOk()) {
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-            resp.getWriter().write("{\"ok\":true,\"message\":\"" + escape(response.getMessage()) + "\"}");
-        } else {
-            int statusCode;
-            if (response.getMessage().contains("required")) {
-                statusCode = HttpServletResponse.SC_BAD_REQUEST;
-            } else if (response.getMessage().contains("exists")) {
-                statusCode = HttpServletResponse.SC_CONFLICT;
+            // Execute use case
+            ApiResponse response = registerUseCase.execute(registerRequest);
+
+            // Handle response
+            if (response.isOk()) {
+                resp.setStatus(HttpServletResponse.SC_CREATED);
+                resp.getWriter().write(gson.toJson(Map.of(
+                        "ok", true,
+                        "message", response.getMessage()
+                )));
+
+                // 🆕 ADD: Log success
+                RequestLogger.updateStatus(requestId, "COMPLETED", startTime);
+
             } else {
-                statusCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+                int statusCode;
+                if (response.getMessage().contains("required")) {
+                    statusCode = HttpServletResponse.SC_BAD_REQUEST;
+                } else if (response.getMessage().contains("exists")) {
+                    statusCode = HttpServletResponse.SC_CONFLICT;
+                } else {
+                    statusCode = HttpServletResponse.SC_INTERNAL_SERVER_ERROR;
+                }
+
+                resp.setStatus(statusCode);
+                resp.getWriter().write(gson.toJson(Map.of(
+                        "ok", false,
+                        "message", response.getMessage()
+                )));
+
+                // 🆕 ADD: Log failure
+                RequestLogger.updateStatus(requestId, "FAILED", startTime);
             }
-            resp.setStatus(statusCode);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"" + escape(response.getMessage()) + "\"}");
+
+        } catch (Exception e) {
+            e.printStackTrace();
+
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write(gson.toJson(Map.of(
+                    "ok", false,
+                    "message", "Server error: " + e.getMessage()
+            )));
+
+            // 🆕 ADD: Log error
+            RequestLogger.updateStatus(requestId, "FAILED", startTime);
         }
     }
 
@@ -64,32 +103,4 @@ public class ApiRegisterServlet extends HttpServlet {
         resp.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
     }
-
-    private static String readBody(HttpServletRequest req) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = req.getReader()) {
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-        }
-        return sb.toString();
-    }
-
-    private static String extractJsonValue(String json, String key) {
-        if (json == null) return null;
-        String pattern = "\"" + key + "\"";
-        int i = json.indexOf(pattern);
-        if (i < 0) return null;
-        int colon = json.indexOf(":", i);
-        if (colon < 0) return null;
-        int firstQuote = json.indexOf("\"", colon + 1);
-        if (firstQuote < 0) return null;
-        int secondQuote = json.indexOf("\"", firstQuote + 1);
-        if (secondQuote < 0) return null;
-        return json.substring(firstQuote + 1, secondQuote);
-    }
-
-    private static String escape(String s) {
-        return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 }
-

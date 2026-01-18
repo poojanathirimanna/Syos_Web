@@ -1,20 +1,28 @@
 package com.syos.web.presentation.api.auth;
 
+import com.google.gson.Gson;
 import com.syos.web.application.dto.ApiResponse;
 import com.syos.web.application.dto.LoginRequest;
 import com.syos.web.application.dto.UserDTO;
 import com.syos.web.application.usecases.LoginUseCase;
+import com.syos.web.concurrency.SessionManager;
+import com.syos.web.concurrency.RequestLogger;
+
+import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 
-import java.io.BufferedReader;
 import java.io.IOException;
+import java.util.HashMap;
+import java.util.Map;
 
+@WebServlet("/api/auth/login")
 public class ApiLoginServlet extends HttpServlet {
 
     private final LoginUseCase loginUseCase = new LoginUseCase();
+    private final Gson gson = new Gson();
 
     @Override
     protected void doOptions(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -27,51 +35,76 @@ public class ApiLoginServlet extends HttpServlet {
         addCors(resp);
         resp.setContentType("application/json; charset=UTF-8");
 
-        // Parse request
-        String body = readBody(req);
-        String username = extractJsonValue(body, "username");
-        String password = extractJsonValue(body, "password");
+        // 🆕 ADD: Log request for concurrency tracking
+        String requestId = RequestLogger.logRequest("LOGIN", null, req.getRemoteAddr());
+        long startTime = System.currentTimeMillis();
 
-        // Create DTO
-        LoginRequest loginRequest = new LoginRequest(username, password);
+        try {
+            // Parse JSON request with GSON
+            LoginRequest loginRequest = gson.fromJson(req.getReader(), LoginRequest.class);
 
-        // Execute use case
-        ApiResponse response = loginUseCase.execute(loginRequest);
+            // Execute use case (same as before)
+            ApiResponse response = loginUseCase.execute(loginRequest);
 
-        // Handle response
-        if (response.isOk()) {
-            HttpSession session = req.getSession(true);
-            session.setAttribute("username", username);
+            if (response.isOk()) {
+                UserDTO userData = (UserDTO) response.getData();
 
-            // Get user data from response
-            UserDTO userData = (UserDTO) response.getData();
+                // 🆕 ADD: Create session with SessionManager
+                String sessionId = SessionManager.createSession(
+                        loginRequest.getUsername(),
+                        String.valueOf(userData.getRoleId()),
+                        req.getRemoteAddr(),
+                        req.getHeader("User-Agent")
+                );
 
-            // Store role_id in session as well
-            if (userData != null) {
+                // Store in HTTP session (same as before)
+                HttpSession session = req.getSession(true);
+                session.setAttribute("sessionId", sessionId);
+                session.setAttribute("username", loginRequest.getUsername());
                 session.setAttribute("roleId", userData.getRoleId());
                 session.setAttribute("fullName", userData.getFullName());
+
+                // Build JSON response
+                Map<String, Object> responseData = new HashMap<>();
+                responseData.put("ok", true);
+                responseData.put("sessionId", sessionId);
+                responseData.put("username", loginRequest.getUsername());
+                responseData.put("roleId", userData.getRoleId());
+                responseData.put("fullName", userData.getFullName());
+                responseData.put("email", userData.getEmail());
+
+                resp.setStatus(HttpServletResponse.SC_OK);
+                resp.getWriter().write(gson.toJson(responseData));
+
+                // 🆕 ADD: Log success
+                RequestLogger.updateStatus(requestId, "COMPLETED", startTime);
+
+            } else {
+                int statusCode = response.getMessage().contains("required")
+                        ? HttpServletResponse.SC_BAD_REQUEST
+                        : HttpServletResponse.SC_UNAUTHORIZED;
+
+                resp.setStatus(statusCode);
+                resp.getWriter().write(gson.toJson(Map.of(
+                        "ok", false,
+                        "message", response.getMessage()
+                )));
+
+                // 🆕 ADD: Log failure
+                RequestLogger.updateStatus(requestId, "FAILED", startTime);
             }
 
-            resp.setStatus(HttpServletResponse.SC_OK);
+        } catch (Exception e) {
+            e.printStackTrace();
 
-            // Build JSON response with user details
-            StringBuilder json = new StringBuilder();
-            json.append("{\"ok\":true,\"username\":\"").append(escape(username)).append("\"");
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write(gson.toJson(Map.of(
+                    "ok", false,
+                    "message", "Server error: " + e.getMessage()
+            )));
 
-            if (userData != null) {
-                json.append(",\"roleId\":").append(userData.getRoleId());
-                json.append(",\"fullName\":\"").append(escape(userData.getFullName() != null ? userData.getFullName() : "")).append("\"");
-                json.append(",\"email\":\"").append(escape(userData.getEmail() != null ? userData.getEmail() : "")).append("\"");
-            }
-
-            json.append("}");
-            resp.getWriter().write(json.toString());
-        } else {
-            int statusCode = response.getMessage().contains("required")
-                    ? HttpServletResponse.SC_BAD_REQUEST
-                    : HttpServletResponse.SC_UNAUTHORIZED;
-            resp.setStatus(statusCode);
-            resp.getWriter().write("{\"ok\":false,\"message\":\"" + escape(response.getMessage()) + "\"}");
+            // 🆕 ADD: Log error
+            RequestLogger.updateStatus(requestId, "FAILED", startTime);
         }
     }
 
@@ -82,32 +115,4 @@ public class ApiLoginServlet extends HttpServlet {
         resp.setHeader("Access-Control-Allow-Methods", "POST, OPTIONS");
         resp.setHeader("Access-Control-Allow-Headers", "Content-Type");
     }
-
-    private static String readBody(HttpServletRequest req) throws IOException {
-        StringBuilder sb = new StringBuilder();
-        try (BufferedReader br = req.getReader()) {
-            String line;
-            while ((line = br.readLine()) != null) sb.append(line);
-        }
-        return sb.toString();
-    }
-
-    private static String extractJsonValue(String json, String key) {
-        if (json == null) return null;
-        String pattern = "\"" + key + "\"";
-        int i = json.indexOf(pattern);
-        if (i < 0) return null;
-        int colon = json.indexOf(":", i);
-        if (colon < 0) return null;
-        int firstQuote = json.indexOf("\"", colon + 1);
-        if (firstQuote < 0) return null;
-        int secondQuote = json.indexOf("\"", firstQuote + 1);
-        if (secondQuote < 0) return null;
-        return json.substring(firstQuote + 1, secondQuote);
-    }
-
-    private static String escape(String s) {
-        return s.replace("\\", "\\\\").replace("\"", "\\\"");
-    }
 }
-
