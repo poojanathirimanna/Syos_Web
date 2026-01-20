@@ -7,7 +7,7 @@ async function parseJsonSafe(response) {
     try {
         return JSON.parse(text);
     } catch {
-        return { ok: false, message: text || "Invalid server response" };
+        return { success: false, message: text || "Invalid server response" };
     }
 }
 

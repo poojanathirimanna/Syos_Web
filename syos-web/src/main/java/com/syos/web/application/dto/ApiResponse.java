@@ -1,42 +1,42 @@
 package com.syos.web.application.dto;
 
-public class ApiResponse {
-    private boolean ok;
+public class ApiResponse<T> {
+    private boolean success;
     private String message;
-    private Object data;
+    private T data;
 
     public ApiResponse() {
     }
 
-    public ApiResponse(boolean ok, String message) {
-        this.ok = ok;
+    public ApiResponse(boolean success, String message) {
+        this.success = success;
         this.message = message;
     }
 
-    public ApiResponse(boolean ok, String message, Object data) {
-        this.ok = ok;
+    public ApiResponse(boolean success, String message, T data) {
+        this.success = success;
         this.message = message;
         this.data = data;
     }
 
-    public static ApiResponse success(String message) {
-        return new ApiResponse(true, message);
+    public static <T> ApiResponse<T> success(String message) {
+        return new ApiResponse<>(true, message);
     }
 
-    public static ApiResponse success(String message, Object data) {
-        return new ApiResponse(true, message, data);
+    public static <T> ApiResponse<T> success(String message, T data) {
+        return new ApiResponse<>(true, message, data);
     }
 
-    public static ApiResponse error(String message) {
-        return new ApiResponse(false, message);
+    public static <T> ApiResponse<T> error(String message) {
+        return new ApiResponse<>(false, message);
     }
 
-    public boolean isOk() {
-        return ok;
+    public boolean isSuccess() {
+        return success;
     }
 
-    public void setOk(boolean ok) {
-        this.ok = ok;
+    public void setSuccess(boolean success) {
+        this.success = success;
     }
 
     public String getMessage() {
@@ -47,11 +47,11 @@ public class ApiResponse {
         this.message = message;
     }
 
-    public Object getData() {
+    public T getData() {
         return data;
     }
 
-    public void setData(Object data) {
+    public void setData(T data) {
         this.data = data;
     }
 }

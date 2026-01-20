@@ -7,7 +7,7 @@ import com.google.api.client.json.gson.GsonFactory;
 import com.google.gson.Gson;
 import com.syos.web.concurrency.SessionManager;
 import com.syos.web.concurrency.RequestLogger;
-import com.syos.web.dao.UserDao;
+import com.syos.web.infrastructure.persistence.dao.UserDao;
 
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
@@ -49,7 +49,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
             if (credential == null || credential.isBlank()) {
                 resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", "Missing credential."
                 )));
                 return;
@@ -68,7 +68,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
             if (idToken == null) {
                 resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", "Invalid Google token."
                 )));
                 RequestLogger.updateStatus(requestId, "FAILED", startTime);
@@ -85,7 +85,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
             if (!emailVerified) {
                 resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", "Email not verified by Google."
                 )));
                 RequestLogger.updateStatus(requestId, "FAILED", startTime);
@@ -116,7 +116,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
 
                 resp.setStatus(HttpServletResponse.SC_OK);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", true,
+                        "success", true,
                         "message", "Login successful.",
                         "sessionId", sessionId,
                         "userId", existingUserId,
@@ -133,7 +133,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
             if (dao.existsByEmail(email)) {
                 resp.setStatus(HttpServletResponse.SC_CONFLICT);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", "Email already registered. Please login with your password or link your Google account."
                 )));
                 RequestLogger.updateStatus(requestId, "FAILED", startTime);
@@ -162,7 +162,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
 
                 resp.setStatus(HttpServletResponse.SC_CREATED);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", true,
+                        "success", true,
                         "message", "Account created and logged in.",
                         "sessionId", sessionId,
                         "userId", newUserId,
@@ -174,7 +174,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
             } else {
                 resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", "Failed to create account."
                 )));
                 RequestLogger.updateStatus(requestId, "FAILED", startTime);
@@ -184,7 +184,7 @@ public class ApiGoogleLoginServlet extends HttpServlet {
             e.printStackTrace();
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.getWriter().write(gson.toJson(Map.of(
-                    "ok", false,
+                    "success", false,
                     "message", "Server error: " + e.getMessage()
             )));
             RequestLogger.updateStatus(requestId, "FAILED", startTime);

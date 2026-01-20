@@ -104,7 +104,7 @@ export default function Register() {
 
         const data = await apiRegister({ user_id, full_name, email, contact_number, password });
 
-        if (data?.ok) {
+        if (data?.success) {
             setMsg("Account created. Redirecting to login...");
             setTimeout(() => nav("/login"), 700);
         } else {
@@ -128,7 +128,7 @@ export default function Register() {
         setMsg("");
         try {
             const res = await apiGoogleLogin(credentialResponse.credential);
-            if (res.ok) {
+            if (res.success) {
                 nav("/home");
             } else {
                 setMsg(res.message || "Google sign-up failed");

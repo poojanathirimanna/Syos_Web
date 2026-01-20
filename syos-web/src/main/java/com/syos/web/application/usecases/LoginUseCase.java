@@ -3,7 +3,7 @@ package com.syos.web.application.usecases;
 import com.syos.web.application.dto.ApiResponse;
 import com.syos.web.application.dto.LoginRequest;
 import com.syos.web.application.dto.UserDTO;
-import com.syos.web.dao.UserDao;
+import com.syos.web.infrastructure.persistence.dao.UserDao;
 
 public class LoginUseCase {
 
@@ -22,7 +22,7 @@ public class LoginUseCase {
      * @param request LoginRequest containing username and password
      * @return ApiResponse with result
      */
-    public ApiResponse execute(LoginRequest request) {
+    public ApiResponse<UserDTO> execute(LoginRequest request) {
         // Validation
         if (request == null) {
             return ApiResponse.error("Request cannot be null");

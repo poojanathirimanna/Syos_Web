@@ -44,10 +44,10 @@ public class ApiLoginServlet extends HttpServlet {
             LoginRequest loginRequest = gson.fromJson(req.getReader(), LoginRequest.class);
 
             // Execute use case (same as before)
-            ApiResponse response = loginUseCase.execute(loginRequest);
+            ApiResponse<UserDTO> response = loginUseCase.execute(loginRequest);
 
-            if (response.isOk()) {
-                UserDTO userData = (UserDTO) response.getData();
+            if (response.isSuccess()) {
+                UserDTO userData = response.getData();
 
                 // 🆕 ADD: Create session with SessionManager
                 String sessionId = SessionManager.createSession(
@@ -66,7 +66,7 @@ public class ApiLoginServlet extends HttpServlet {
 
                 // Build JSON response
                 Map<String, Object> responseData = new HashMap<>();
-                responseData.put("ok", true);
+                responseData.put("success", true);
                 responseData.put("sessionId", sessionId);
                 responseData.put("username", loginRequest.getUsername());
                 responseData.put("roleId", userData.getRoleId());
@@ -86,7 +86,7 @@ public class ApiLoginServlet extends HttpServlet {
 
                 resp.setStatus(statusCode);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", response.getMessage()
                 )));
 
@@ -99,7 +99,7 @@ public class ApiLoginServlet extends HttpServlet {
 
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.getWriter().write(gson.toJson(Map.of(
-                    "ok", false,
+                    "success", false,
                     "message", "Server error: " + e.getMessage()
             )));
 

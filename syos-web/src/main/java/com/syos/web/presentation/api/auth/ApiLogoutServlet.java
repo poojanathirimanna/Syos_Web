@@ -56,7 +56,7 @@ public class ApiLogoutServlet extends HttpServlet {
             }
 
             resp.setStatus(HttpServletResponse.SC_OK);
-            resp.getWriter().write(gson.toJson(Map.of("ok", true)));
+            resp.getWriter().write(gson.toJson(Map.of("success", true)));
 
             // Log success
             RequestLogger.updateStatus(requestId, "COMPLETED", startTime);
@@ -66,7 +66,7 @@ public class ApiLogoutServlet extends HttpServlet {
 
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.getWriter().write(gson.toJson(Map.of(
-                    "ok", false,
+                    "success", false,
                     "message", "Logout failed: " + e.getMessage()
             )));
 

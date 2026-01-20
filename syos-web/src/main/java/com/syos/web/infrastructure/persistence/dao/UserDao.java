@@ -1,4 +1,4 @@
-package com.syos.web.dao;
+package com.syos.web.infrastructure.persistence.dao;
 
 import com.syos.web.db.Db;
 import org.mindrot.jbcrypt.BCrypt;

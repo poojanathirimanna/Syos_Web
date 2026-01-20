@@ -49,13 +49,13 @@ public class ApiRegisterServlet extends HttpServlet {
             );
 
             // Execute use case
-            ApiResponse response = registerUseCase.execute(registerRequest);
+            ApiResponse<Object> response = registerUseCase.execute(registerRequest);
 
             // Handle response
-            if (response.isOk()) {
+            if (response.isSuccess()) {
                 resp.setStatus(HttpServletResponse.SC_CREATED);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", true,
+                        "success", true,
                         "message", response.getMessage()
                 )));
 
@@ -74,7 +74,7 @@ public class ApiRegisterServlet extends HttpServlet {
 
                 resp.setStatus(statusCode);
                 resp.getWriter().write(gson.toJson(Map.of(
-                        "ok", false,
+                        "success", false,
                         "message", response.getMessage()
                 )));
 
@@ -87,7 +87,7 @@ public class ApiRegisterServlet extends HttpServlet {
 
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.getWriter().write(gson.toJson(Map.of(
-                    "ok", false,
+                    "success", false,
                     "message", "Server error: " + e.getMessage()
             )));
 

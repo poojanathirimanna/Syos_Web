@@ -2,7 +2,7 @@ package com.syos.web.application.usecases;
 
 import com.syos.web.application.dto.ApiResponse;
 import com.syos.web.application.dto.RegisterRequest;
-import com.syos.web.dao.UserDao;
+import com.syos.web.infrastructure.persistence.dao.UserDao;
 
 public class RegisterUseCase {
 
@@ -22,7 +22,7 @@ public class RegisterUseCase {
      * @param request RegisterRequest containing user details
      * @return ApiResponse with result
      */
-    public ApiResponse execute(RegisterRequest request) {
+    public ApiResponse<Object> execute(RegisterRequest request) {
         // Validation
         if (request == null) {
             return ApiResponse.error("Request cannot be null");

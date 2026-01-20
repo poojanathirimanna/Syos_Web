@@ -17,7 +17,7 @@ export default function Login() {
 
         try {
             const res = await apiLogin(username, password);
-            if (res.ok) {
+            if (res.success) {
                 // Always navigate to /home - Home.jsx will handle role-based dashboard rendering
                 nav("/home");
             } else {
@@ -32,7 +32,7 @@ export default function Login() {
         setMsg("");
         try {
             const res = await apiGoogleLogin(credentialResponse.credential);
-            if (res.ok) {
+            if (res.success) {
                 // Always navigate to /home - Home.jsx will handle role-based dashboard rendering
                 nav("/home");
             } else {
