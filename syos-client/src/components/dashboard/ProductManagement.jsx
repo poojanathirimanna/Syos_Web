@@ -15,13 +15,10 @@ export default function ProductManagement() {
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState("create"); // create, edit, view
     const [formData, setFormData] = useState({
-        code: "",
+        productCode: "",
         name: "",
-        price: "",
-        description: "",
-        category: "",
-        stock: "",
-        image_url: ""
+        unitPrice: "",
+        imageUrl: ""
     });
 
     useEffect(() => {
@@ -47,13 +44,10 @@ export default function ProductManagement() {
     const handleCreate = () => {
         setModalMode("create");
         setFormData({
-            code: "",
+            productCode: "",
             name: "",
-            price: "",
-            description: "",
-            category: "",
-            stock: "",
-            image_url: ""
+            unitPrice: "",
+            imageUrl: ""
         });
         setShowModal(true);
     };
@@ -61,13 +55,10 @@ export default function ProductManagement() {
     const handleEdit = async (product) => {
         setModalMode("edit");
         setFormData({
-            code: product.code || "",
+            productCode: product.productCode || "",
             name: product.name || "",
-            price: product.price || "",
-            description: product.description || "",
-            category: product.category || "",
-            stock: product.stock || "",
-            image_url: product.image_url || ""
+            unitPrice: product.unitPrice || "",
+            imageUrl: product.imageUrl || ""
         });
         setShowModal(true);
     };
@@ -75,24 +66,27 @@ export default function ProductManagement() {
     const handleView = async (product) => {
         setModalMode("view");
         setFormData({
-            code: product.code || "",
+            productCode: product.productCode || "",
             name: product.name || "",
-            price: product.price || "",
-            description: product.description || "",
-            category: product.category || "",
-            stock: product.stock || "",
-            image_url: product.image_url || ""
+            unitPrice: product.unitPrice || "",
+            imageUrl: product.imageUrl || "",
+            status: product.status || "",
+            totalQuantity: product.totalQuantity || 0,
+            shelfQuantity: product.shelfQuantity || 0,
+            warehouseQuantity: product.warehouseQuantity || 0,
+            websiteQuantity: product.websiteQuantity || 0,
+            needsReordering: product.needsReordering || false
         });
         setShowModal(true);
     };
 
-    const handleDelete = async (code) => {
+    const handleDelete = async (productCode) => {
         if (!window.confirm("Are you sure you want to delete this product?")) {
             return;
         }
 
         try {
-            const response = await apiDeleteProduct(code);
+            const response = await apiDeleteProduct(productCode);
             if (response.success) {
                 setSuccess("Product deleted successfully!");
                 loadProducts();
@@ -144,8 +138,8 @@ export default function ProductManagement() {
     const filteredProducts = Array.isArray(products) 
         ? products.filter(product =>
             product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.code?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.category?.toLowerCase().includes(searchTerm.toLowerCase())
+            product.productCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+            product.status?.toLowerCase().includes(searchTerm.toLowerCase())
         )
         : [];
 
@@ -617,19 +611,19 @@ export default function ProductManagement() {
                                     <th>Image</th>
                                     <th>Code</th>
                                     <th>Name</th>
-                                    <th>Category</th>
-                                    <th>Price</th>
-                                    <th>Stock</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Stock</th>
+                                    <th>Status</th>
                                     <th>Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {filteredProducts.map((product) => (
-                                    <tr key={product.code}>
+                                    <tr key={product.productCode}>
                                         <td>
-                                            {product.image_url ? (
+                                            {product.imageUrl ? (
                                                 <img
-                                                    src={product.image_url}
+                                                    src={product.imageUrl}
                                                     alt={product.name}
                                                     className="product-image"
                                                     onError={(e) => {
@@ -647,19 +641,27 @@ export default function ProductManagement() {
                                             )}
                                         </td>
                                         <td>
-                                            <span className="product-code">{product.code}</span>
+                                            <span className="product-code">{product.productCode}</span>
                                         </td>
                                         <td>{product.name}</td>
-                                        <td>{product.category || '-'}</td>
                                         <td className="product-price">
-                                            ${parseFloat(product.price || 0).toFixed(2)}
+                                            ${parseFloat(product.unitPrice || 0).toFixed(2)}
                                         </td>
                                         <td>
                                             <span className={`product-stock ${
-                                                product.stock > 50 ? 'stock-high' :
-                                                product.stock > 20 ? 'stock-medium' : 'stock-low'
+                                                product.totalQuantity > 50 ? 'stock-high' :
+                                                product.totalQuantity > 20 ? 'stock-medium' : 'stock-low'
                                             }`}>
-                                                {product.stock || 0}
+                                                {product.totalQuantity || 0}
+                                            </span>
+                                        </td>
+                                        <td>
+                                            <span className={`product-stock ${
+                                                product.status === 'In Stock' ? 'stock-high' :
+                                                product.status === 'Low Stock' ? 'stock-medium' : 'stock-low'
+                                            }`}>
+                                                {product.status || 'Unknown'}
+                                                {product.needsReordering && ' ⚠️'}
                                             </span>
                                         </td>
                                         <td>
@@ -680,7 +682,7 @@ export default function ProductManagement() {
                                                 </button>
                                                 <button
                                                     className="btn-icon btn-delete"
-                                                    onClick={() => handleDelete(product.code)}
+                                                    onClick={() => handleDelete(product.productCode)}
                                                     title="Delete"
                                                 >
                                                     🗑️
@@ -715,31 +717,18 @@ export default function ProductManagement() {
                                 <div className="modal-body">
                                     {error && <div className="alert alert-error">{error}</div>}
 
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label className="form-label">Product Code *</label>
-                                            <input
-                                                type="text"
-                                                className="form-input"
-                                                name="code"
-                                                value={formData.code}
-                                                onChange={handleInputChange}
-                                                disabled={modalMode === "edit" || modalMode === "view"}
-                                                required
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label className="form-label">Category</label>
-                                            <input
-                                                type="text"
-                                                className="form-input"
-                                                name="category"
-                                                value={formData.category}
-                                                onChange={handleInputChange}
-                                                disabled={modalMode === "view"}
-                                            />
-                                        </div>
+                                    <div className="form-group">
+                                        <label className="form-label">Product Code *</label>
+                                        <input
+                                            type="text"
+                                            className="form-input"
+                                            name="productCode"
+                                            value={formData.productCode}
+                                            onChange={handleInputChange}
+                                            disabled={modalMode === "edit" || modalMode === "view"}
+                                            required
+                                            placeholder="e.g., WATER001"
+                                        />
                                     </div>
 
                                     <div className="form-group">
@@ -752,47 +741,23 @@ export default function ProductManagement() {
                                             onChange={handleInputChange}
                                             disabled={modalMode === "view"}
                                             required
+                                            placeholder="e.g., Mineral Water 1L"
                                         />
                                     </div>
 
                                     <div className="form-group">
-                                        <label className="form-label">Description</label>
-                                        <textarea
-                                            className="form-textarea"
-                                            name="description"
-                                            value={formData.description}
+                                        <label className="form-label">Unit Price ($) *</label>
+                                        <input
+                                            type="number"
+                                            step="0.01"
+                                            className="form-input"
+                                            name="unitPrice"
+                                            value={formData.unitPrice}
                                             onChange={handleInputChange}
                                             disabled={modalMode === "view"}
+                                            required
+                                            placeholder="80.00"
                                         />
-                                    </div>
-
-                                    <div className="form-row">
-                                        <div className="form-group">
-                                            <label className="form-label">Price ($) *</label>
-                                            <input
-                                                type="number"
-                                                step="0.01"
-                                                className="form-input"
-                                                name="price"
-                                                value={formData.price}
-                                                onChange={handleInputChange}
-                                                disabled={modalMode === "view"}
-                                                required
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label className="form-label">Stock Quantity *</label>
-                                            <input
-                                                type="number"
-                                                className="form-input"
-                                                name="stock"
-                                                value={formData.stock}
-                                                onChange={handleInputChange}
-                                                disabled={modalMode === "view"}
-                                                required
-                                            />
-                                        </div>
                                     </div>
 
                                     <div className="form-group">
@@ -800,13 +765,81 @@ export default function ProductManagement() {
                                         <input
                                             type="text"
                                             className="form-input"
-                                            name="image_url"
-                                            value={formData.image_url}
+                                            name="imageUrl"
+                                            value={formData.imageUrl || ''}
                                             onChange={handleInputChange}
                                             disabled={modalMode === "view"}
-                                            placeholder="https://example.com/image.jpg"
+                                            placeholder="https://example.com/image.jpg (optional)"
                                         />
                                     </div>
+
+                                    {modalMode === "view" && (
+                                        <>
+                                            <div className="form-group">
+                                                <label className="form-label">Status</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-input"
+                                                    value={formData.status || ''}
+                                                    disabled
+                                                />
+                                            </div>
+
+                                            <div className="form-row">
+                                                <div className="form-group">
+                                                    <label className="form-label">Shelf Quantity</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input"
+                                                        value={formData.shelfQuantity || 0}
+                                                        disabled
+                                                    />
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label className="form-label">Warehouse Quantity</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input"
+                                                        value={formData.warehouseQuantity || 0}
+                                                        disabled
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="form-row">
+                                                <div className="form-group">
+                                                    <label className="form-label">Website Quantity</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input"
+                                                        value={formData.websiteQuantity || 0}
+                                                        disabled
+                                                    />
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label className="form-label">Total Quantity</label>
+                                                    <input
+                                                        type="number"
+                                                        className="form-input"
+                                                        value={formData.totalQuantity || 0}
+                                                        disabled
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="form-group">
+                                                <label className="form-label">Needs Reordering</label>
+                                                <input
+                                                    type="text"
+                                                    className="form-input"
+                                                    value={formData.needsReordering ? 'Yes ⚠️' : 'No'}
+                                                    disabled
+                                                />
+                                            </div>
+                                        </>
+                                    )}
                                 </div>
 
                                 <div className="modal-footer">
