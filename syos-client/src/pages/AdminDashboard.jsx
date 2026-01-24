@@ -3,6 +3,7 @@ import Sidebar from "../components/common/Sidebar";
 import Header from "../components/common/Header";
 import StatCard from "../components/dashboard/StatCard";
 import CompanyCard from "../components/dashboard/CompanyCard";
+import ProductManagement from "../components/dashboard/ProductManagement";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -236,7 +237,11 @@ export default function AdminDashboard({ user, onLogout }) {
                             </div>
                         )}
 
-                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && (
+                        {activeMenu === "product" && (
+                            <ProductManagement />
+                        )}
+
+                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "product" && (
                             <div>
                                 <h1 className="section-title">
                                     {menuItems.find(m => m.id === activeMenu)?.label}

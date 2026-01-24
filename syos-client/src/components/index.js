@@ -5,4 +5,5 @@ export { default as Header } from './common/Header';
 // Dashboard Components
 export { default as StatCard } from './dashboard/StatCard';
 export { default as CompanyCard } from './dashboard/CompanyCard';
+export { default as ProductManagement } from './dashboard/ProductManagement';
 
