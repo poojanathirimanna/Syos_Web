@@ -43,6 +43,11 @@ public class CreateProductUseCase {
             product.setImageUrl(request.getImageUrl());
         }
 
+        // 🆕 NEW - Set category ID if provided
+        if (request.getCategoryId() != null) {
+            product.setCategoryId(request.getCategoryId());
+        }
+
         // Step 4: Validate domain entity
         product.validate();
 
@@ -55,6 +60,8 @@ public class CreateProductUseCase {
                 savedProduct.getName(),
                 savedProduct.getUnitPrice(),
                 savedProduct.getImageUrl(),
+                savedProduct.getCategoryId(),           // 🆕 NEW
+                null,                                    // 🆕 NEW - categoryName (fetched later by DAO)
                 savedProduct.getShelfQuantity(),
                 savedProduct.getWarehouseQuantity(),
                 savedProduct.getWebsiteQuantity(),

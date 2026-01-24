@@ -154,3 +154,23 @@ export async function apiDeleteProduct(code) {
     return await parseJsonSafe(res);
 }
 
+/* =========================
+   CATEGORY APIs
+   ========================= */
+
+// GET ALL CATEGORIES
+export async function apiGetCategories() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/categories`, {
+            method: "GET",
+            credentials: "include",
+        });
+
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+

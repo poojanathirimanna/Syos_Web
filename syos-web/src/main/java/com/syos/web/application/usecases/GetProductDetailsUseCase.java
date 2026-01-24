@@ -43,6 +43,8 @@ public class GetProductDetailsUseCase {
                 product.getName(),
                 product.getUnitPrice(),
                 product.getImageUrl(),
+                product.getCategoryId(),      // 🆕 NEW
+                null,                          // 🆕 NEW - categoryName (fetched by DAO)
                 product.getShelfQuantity(),
                 product.getWarehouseQuantity(),
                 product.getWebsiteQuantity(),

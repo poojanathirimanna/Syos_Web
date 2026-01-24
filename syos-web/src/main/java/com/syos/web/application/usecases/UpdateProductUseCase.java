@@ -44,6 +44,11 @@ public class UpdateProductUseCase {
             product.setImageUrl(request.getImageUrl());
         }
 
+        // 🆕 NEW - Update category ID if provided
+        if (request.getCategoryId() != null) {
+            product.setCategoryId(request.getCategoryId());
+        }
+
         // Step 4: Validate updated entity
         product.validate();
 
@@ -56,6 +61,8 @@ public class UpdateProductUseCase {
                 updatedProduct.getName(),
                 updatedProduct.getUnitPrice(),
                 updatedProduct.getImageUrl(),
+                updatedProduct.getCategoryId(),           // 🆕 NEW
+                null,                                      // 🆕 NEW - categoryName (fetched by DAO)
                 updatedProduct.getShelfQuantity(),
                 updatedProduct.getWarehouseQuantity(),
                 updatedProduct.getWebsiteQuantity(),

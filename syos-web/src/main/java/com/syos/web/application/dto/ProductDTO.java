@@ -12,7 +12,9 @@ public class ProductDTO {
     private String productCode;
     private String name;
     private BigDecimal unitPrice;
-    private String imageUrl;  // 🆕 NEW - Product image URL
+    private String imageUrl;
+    private Integer categoryId;      // 🆕 NEW - Category ID
+    private String categoryName;     // 🆕 NEW - Category name for display
     private int shelfQuantity;
     private int warehouseQuantity;
     private int websiteQuantity;
@@ -24,14 +26,16 @@ public class ProductDTO {
     public ProductDTO() {
     }
 
-    // Constructor with all fields including image
+    // Constructor with all fields including image and category
     public ProductDTO(String productCode, String name, BigDecimal unitPrice, String imageUrl,
-                      int shelfQuantity, int warehouseQuantity, int websiteQuantity,
-                      ProductStatus status) {
+                      Integer categoryId, String categoryName, int shelfQuantity, int warehouseQuantity,
+                      int websiteQuantity, ProductStatus status) {
         this.productCode = productCode;
         this.name = name;
         this.unitPrice = unitPrice;
         this.imageUrl = imageUrl;
+        this.categoryId = categoryId;         // 🆕 NEW
+        this.categoryName = categoryName;     // 🆕 NEW
         this.shelfQuantity = shelfQuantity;
         this.warehouseQuantity = warehouseQuantity;
         this.websiteQuantity = websiteQuantity;
@@ -65,12 +69,29 @@ public class ProductDTO {
         this.unitPrice = unitPrice;
     }
 
-    public String getImageUrl() {  // 🆕 NEW
+    public String getImageUrl() {
         return imageUrl;
     }
 
-    public void setImageUrl(String imageUrl) {  // 🆕 NEW
+    public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    // 🆕 NEW - Category getters and setters
+    public Integer getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
+    }
+
+    public String getCategoryName() {
+        return categoryName;
+    }
+
+    public void setCategoryName(String categoryName) {
+        this.categoryName = categoryName;
     }
 
     public int getShelfQuantity() {

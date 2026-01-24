@@ -3,11 +3,13 @@ import {
     apiGetProducts,
     apiCreateProduct,
     apiUpdateProduct,
-    apiDeleteProduct
+    apiDeleteProduct,
+    apiGetCategories
 } from "../../services/api";
 
 export default function ProductManagement() {
     const [products, setProducts] = useState([]);
+    const [categories, setCategories] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
@@ -22,12 +24,25 @@ export default function ProductManagement() {
         productCode: "",
         name: "",
         unitPrice: "",
-        imageUrl: ""
+        imageUrl: "",
+        categoryId: ""
     });
 
     useEffect(() => {
         loadProducts();
+        loadCategories();
     }, []);
+
+    const loadCategories = async () => {
+        try {
+            const response = await apiGetCategories();
+            if (response.success) {
+                setCategories(response.data || []);
+            }
+        } catch (err) {
+            console.error("Error loading categories:", err);
+        }
+    };
 
     useEffect(() => {
         const handleClickOutside = (event) => {
@@ -61,7 +76,8 @@ export default function ProductManagement() {
             productCode: "",
             name: "",
             unitPrice: "",
-            imageUrl: ""
+            imageUrl: "",
+            categoryId: ""
         });
         setImageFile(null);
         setImagePreview("");
@@ -74,7 +90,8 @@ export default function ProductManagement() {
             productCode: product.productCode || "",
             name: product.name || "",
             unitPrice: product.unitPrice || "",
-            imageUrl: product.imageUrl || ""
+            imageUrl: product.imageUrl || "",
+            categoryId: product.categoryId || ""
         });
         setImagePreview(product.imageUrl || "");
         setImageFile(null);
@@ -669,6 +686,7 @@ export default function ProductManagement() {
                                             <th>Image</th>
                                             <th>Product Code</th>
                                             <th>Name</th>
+                                            <th>Category</th>
                                             <th>Base Price</th>
                                             <th>Options</th>
                                         </tr>
@@ -711,6 +729,11 @@ export default function ProductManagement() {
                                                 </td>
                                                 <td>{product.productCode}</td>
                                                 <td>{product.name}</td>
+                                                <td>
+                                                    {product.categoryId ? (
+                                                        categories.find(cat => cat.categoryId === product.categoryId)?.categoryName || '-'
+                                                    ) : '-'}
+                                                </td>
                                                 <td>Rs.{parseFloat(product.unitPrice || 0).toFixed(0)}</td>
                                                 <td>
                                                     <div className="action-dropdown">
@@ -800,6 +823,25 @@ export default function ProductManagement() {
                                             required
                                             placeholder="e.g., Mineral Water 1L"
                                         />
+                                    </div>
+
+                                    <div className="form-group">
+                                        <label className="form-label">Category</label>
+                                        <select
+                                            className="form-input"
+                                            name="categoryId"
+                                            value={formData.categoryId}
+                                            onChange={handleInputChange}
+                                            disabled={modalMode === "view"}
+                                            style={{ cursor: modalMode === "view" ? 'not-allowed' : 'pointer' }}
+                                        >
+                                            <option value="">Select a category (optional)</option>
+                                            {categories.map((category) => (
+                                                <option key={category.categoryId} value={category.categoryId}>
+                                                    {category.categoryName}
+                                                </option>
+                                            ))}
+                                        </select>
                                     </div>
 
                                     <div className="form-group">

@@ -13,7 +13,8 @@ public class Product {
     private String productCode;
     private String name;
     private BigDecimal unitPrice;
-    private String imageUrl;  // 🆕 NEW - Product image URL
+    private String imageUrl;
+    private Integer categoryId;  // 🆕 NEW - Category association
     private int shelfQuantity;
     private int warehouseQuantity;
     private int websiteQuantity;
@@ -32,7 +33,8 @@ public class Product {
         this.productCode = productCode;
         this.name = name;
         this.unitPrice = unitPrice;
-        this.imageUrl = null;  // Default: no image
+        this.imageUrl = null;
+        this.categoryId = null;  // 🆕 NEW
         this.shelfQuantity = 0;
         this.warehouseQuantity = 0;
         this.websiteQuantity = 0;
@@ -41,13 +43,14 @@ public class Product {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Full constructor with image
+    // Full constructor with image and category
     public Product(String productCode, String name, BigDecimal unitPrice, String imageUrl,
-                   int shelfQuantity, int warehouseQuantity, int websiteQuantity) {
+                   Integer categoryId, int shelfQuantity, int warehouseQuantity, int websiteQuantity) {
         this.productCode = productCode;
         this.name = name;
         this.unitPrice = unitPrice;
         this.imageUrl = imageUrl;
+        this.categoryId = categoryId;  // 🆕 NEW
         this.shelfQuantity = shelfQuantity;
         this.warehouseQuantity = warehouseQuantity;
         this.websiteQuantity = websiteQuantity;
@@ -86,6 +89,10 @@ public class Product {
         if (shelfQuantity < 0 || warehouseQuantity < 0 || websiteQuantity < 0) {
             throw new IllegalArgumentException("Quantities cannot be negative");
         }
+        // categoryId is optional, but if provided, must be positive
+        if (categoryId != null && categoryId <= 0) {
+            throw new IllegalArgumentException("Invalid category ID");
+        }
     }
 
     // Getters and Setters
@@ -113,12 +120,22 @@ public class Product {
         this.unitPrice = unitPrice;
     }
 
-    public String getImageUrl() {  // 🆕 NEW
+    public String getImageUrl() {
         return imageUrl;
     }
 
-    public void setImageUrl(String imageUrl) {  // 🆕 NEW
+    public void setImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // 🆕 NEW - Category getters and setters
+    public Integer getCategoryId() {
+        return categoryId;
+    }
+
+    public void setCategoryId(Integer categoryId) {
+        this.categoryId = categoryId;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -182,6 +199,7 @@ public class Product {
                 ", name='" + name + '\'' +
                 ", unitPrice=" + unitPrice +
                 ", imageUrl='" + imageUrl + '\'' +
+                ", categoryId=" + categoryId +
                 ", shelfQuantity=" + shelfQuantity +
                 ", warehouseQuantity=" + warehouseQuantity +
                 ", websiteQuantity=" + websiteQuantity +

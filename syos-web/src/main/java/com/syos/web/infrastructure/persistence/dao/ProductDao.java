@@ -12,7 +12,7 @@ import java.util.Optional;
 
 /**
  * Data Access Object for Product
- * Updated to work with inventory_locations table
+ * Updated to work with inventory_locations table and product_categories
  */
 public class ProductDao {
 
@@ -26,13 +26,16 @@ public class ProductDao {
                 "    p.name, " +
                 "    p.unit_price, " +
                 "    p.image_url, " +
+                "    p.category_id, " +  // 🆕 NEW
+                "    pc.category_name, " +  // 🆕 NEW
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
                 "ORDER BY p.product_code";
 
         try (Connection conn = Db.getConnection();
@@ -56,13 +59,16 @@ public class ProductDao {
                 "    p.name, " +
                 "    p.unit_price, " +
                 "    p.image_url, " +
+                "    p.category_id, " +  // 🆕 NEW
+                "    pc.category_name, " +  // 🆕 NEW
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.product_code = ? AND p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url";
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name";  // 🆕 UPDATED
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -100,7 +106,7 @@ public class ProductDao {
      * Insert new product
      */
     public Product save(Product product) throws SQLException {
-        String sql = "INSERT INTO products (product_code, name, unit_price, image_url, is_deleted) VALUES (?, ?, ?, ?, FALSE)";
+        String sql = "INSERT INTO products (product_code, name, unit_price, image_url, category_id, is_deleted) VALUES (?, ?, ?, ?, ?, FALSE)";  // 🆕 UPDATED
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -109,6 +115,13 @@ public class ProductDao {
             stmt.setString(2, product.getName());
             stmt.setBigDecimal(3, product.getUnitPrice());
             stmt.setString(4, product.getImageUrl());
+
+            // 🆕 NEW - Handle category_id (can be null)
+            if (product.getCategoryId() != null) {
+                stmt.setInt(5, product.getCategoryId());
+            } else {
+                stmt.setNull(5, Types.INTEGER);
+            }
 
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
@@ -122,7 +135,7 @@ public class ProductDao {
      * Update existing product
      */
     public Product update(Product product) throws SQLException {
-        String sql = "UPDATE products SET name = ?, unit_price = ?, image_url = ? WHERE product_code = ? AND is_deleted = FALSE";
+        String sql = "UPDATE products SET name = ?, unit_price = ?, image_url = ?, category_id = ? WHERE product_code = ? AND is_deleted = FALSE";  // 🆕 UPDATED
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -130,7 +143,15 @@ public class ProductDao {
             stmt.setString(1, product.getName());
             stmt.setBigDecimal(2, product.getUnitPrice());
             stmt.setString(3, product.getImageUrl());
-            stmt.setString(4, product.getProductCode());
+
+            // 🆕 NEW - Handle category_id (can be null)
+            if (product.getCategoryId() != null) {
+                stmt.setInt(4, product.getCategoryId());
+            } else {
+                stmt.setNull(4, Types.INTEGER);
+            }
+
+            stmt.setString(5, product.getProductCode());
 
             int rowsAffected = stmt.executeUpdate();
             if (rowsAffected > 0) {
@@ -165,13 +186,16 @@ public class ProductDao {
                 "    p.name, " +
                 "    p.unit_price, " +
                 "    p.image_url, " +
+                "    p.category_id, " +  // 🆕 NEW
+                "    pc.category_name, " +  // 🆕 NEW
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
                 "HAVING warehouse_quantity < ? " +
                 "ORDER BY warehouse_quantity ASC";
 
@@ -198,13 +222,16 @@ public class ProductDao {
                 "    p.name, " +
                 "    p.unit_price, " +
                 "    p.image_url, " +
+                "    p.category_id, " +  // 🆕 NEW
+                "    pc.category_name, " +  // 🆕 NEW
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
                 "HAVING (shelf_quantity + warehouse_quantity) = 0 " +
                 "ORDER BY p.product_code";
 
@@ -244,12 +271,13 @@ public class ProductDao {
         String name = rs.getString("name");
         BigDecimal unitPrice = rs.getBigDecimal("unit_price");
         String imageUrl = rs.getString("image_url");
+        Integer categoryId = (Integer) rs.getObject("category_id");  // 🆕 NEW - Can be null
         int shelfQuantity = rs.getInt("shelf_quantity");
         int warehouseQuantity = rs.getInt("warehouse_quantity");
         int websiteQuantity = rs.getInt("website_quantity");
 
         Product product = new Product(productCode, name, unitPrice, imageUrl,
-                shelfQuantity, warehouseQuantity, websiteQuantity);
+                categoryId, shelfQuantity, warehouseQuantity, websiteQuantity);  // 🆕 UPDATED
 
         // Calculate and set status
         product.setStatus(product.calculateStatus());

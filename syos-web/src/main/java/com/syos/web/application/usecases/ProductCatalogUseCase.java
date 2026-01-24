@@ -48,7 +48,9 @@ public class ProductCatalogUseCase {
                 product.getProductCode(),
                 product.getName(),
                 product.getUnitPrice(),
-                product.getImageUrl(),  // Include image URL
+                product.getImageUrl(),
+                product.getCategoryId(),           // 🆕 NEW
+                null,                               // 🆕 NEW - categoryName (fetched by DAO)
                 product.getShelfQuantity(),
                 product.getWarehouseQuantity(),
                 product.getWebsiteQuantity(),
