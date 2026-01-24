@@ -14,16 +14,8 @@ export default function AdminDashboard({ user, onLogout }) {
 
     const menuItems = [
         { id: "dashboard", icon: "📊", label: "Dashboard" },
-        { id: "admin", icon: "👨‍💼", label: "Admin Dashboard" },
-        { id: "brand", icon: "🏷️", label: "Brand Dashboard" },
-        { id: "payments", icon: "💳", label: "Payments" },
-        { id: "campaign", icon: "📢", label: "Campaign" },
-        { id: "user", icon: "👤", label: "User" },
-        { id: "merchant", icon: "🏪", label: "Merchant" },
         { id: "product", icon: "📦", label: "Product" },
-        { id: "faq", icon: "❓", label: "FAQ" },
-        { id: "reports", icon: "📋", label: "Reports" },
-        { id: "feedback", icon: "⭐", label: "Feedback" },
+        { id: "inventory", icon: "📋", label: "Inventory" },
     ];
 
     const companies = [

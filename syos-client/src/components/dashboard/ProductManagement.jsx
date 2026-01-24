@@ -14,6 +14,10 @@ export default function ProductManagement() {
     const [searchTerm, setSearchTerm] = useState("");
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState("create"); // create, edit, view
+    const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const [activeDropdown, setActiveDropdown] = useState(null);
+    const [imageFile, setImageFile] = useState(null);
+    const [imagePreview, setImagePreview] = useState("");
     const [formData, setFormData] = useState({
         productCode: "",
         name: "",
@@ -25,12 +29,22 @@ export default function ProductManagement() {
         loadProducts();
     }, []);
 
+    useEffect(() => {
+        const handleClickOutside = (event) => {
+            if (activeDropdown && !event.target.closest('.action-dropdown')) {
+                setActiveDropdown(null);
+            }
+        };
+        document.addEventListener('click', handleClickOutside);
+        return () => document.removeEventListener('click', handleClickOutside);
+    }, [activeDropdown]);
+
     const loadProducts = async () => {
         try {
             setLoading(true);
             const response = await apiGetProducts();
             if (response.success) {
-                setProducts(response.data || []);
+                setProducts(response.data.products || []);
             } else {
                 setError(response.message || "Failed to load products");
             }
@@ -49,6 +63,8 @@ export default function ProductManagement() {
             unitPrice: "",
             imageUrl: ""
         });
+        setImageFile(null);
+        setImagePreview("");
         setShowModal(true);
     };
 
@@ -60,7 +76,10 @@ export default function ProductManagement() {
             unitPrice: product.unitPrice || "",
             imageUrl: product.imageUrl || ""
         });
+        setImagePreview(product.imageUrl || "");
+        setImageFile(null);
         setShowModal(true);
+        setActiveDropdown(null);
     };
 
     const handleView = async (product) => {
@@ -77,7 +96,9 @@ export default function ProductManagement() {
             websiteQuantity: product.websiteQuantity || 0,
             needsReordering: product.needsReordering || false
         });
+        setImagePreview(product.imageUrl || "");
         setShowModal(true);
+        setActiveDropdown(null);
     };
 
     const handleDelete = async (productCode) => {
@@ -135,12 +156,27 @@ export default function ProductManagement() {
         }));
     };
 
+    const handleImageChange = (e) => {
+        const file = e.target.files[0];
+        if (file) {
+            setImageFile(file);
+            const reader = new FileReader();
+            reader.onloadend = () => {
+                setImagePreview(reader.result);
+                setFormData(prev => ({
+                    ...prev,
+                    imageUrl: reader.result
+                }));
+            };
+            reader.readAsDataURL(file);
+        }
+    };
+
     const filteredProducts = Array.isArray(products) 
         ? products.filter(product =>
             product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.productCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.status?.toLowerCase().includes(searchTerm.toLowerCase())
-        )
+            product.productCode?.toLowerCase().includes(searchTerm.toLowerCase())
+        ).slice(0, entriesPerPage)
         : [];
 
     return (
@@ -148,6 +184,9 @@ export default function ProductManagement() {
             <style>{`
                 .product-management {
                     width: 100%;
+                    background: #f5f5f5;
+                    min-height: 100vh;
+                    padding: 24px;
                 }
 
                 .pm-header {
@@ -155,39 +194,78 @@ export default function ProductManagement() {
                     justify-content: space-between;
                     align-items: center;
                     margin-bottom: 24px;
-                    flex-wrap: wrap;
-                    gap: 16px;
                 }
 
                 .pm-title {
-                    font-size: 24px;
-                    font-weight: 700;
+                    font-size: 32px;
+                    font-weight: 400;
                     color: #333;
                 }
 
-                .pm-actions {
+                .btn-add-product {
+                    background: #ffc107;
+                    color: white;
+                    padding: 12px 24px;
+                    border: none;
+                    border-radius: 4px;
+                    font-size: 15px;
+                    font-weight: 600;
+                    cursor: pointer;
                     display: flex;
-                    gap: 12px;
                     align-items: center;
+                    gap: 8px;
+                    transition: all 0.2s;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
                 }
 
-                .search-box {
+                .btn-add-product:hover {
+                    background: #ffb300;
+                    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+                }
+
+                .table-controls {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-bottom: 16px;
+                    padding: 16px;
+                    background: white;
+                    border-radius: 4px;
+                }
+
+                .entries-control {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    font-size: 15px;
+                    color: #666;
+                }
+
+                .entries-select {
+                    padding: 6px 12px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 15px;
+                    cursor: pointer;
+                }
+
+                .search-control {
                     position: relative;
                 }
 
                 .search-input {
-                    padding: 10px 16px 10px 40px;
-                    border: 2px solid #e0e0e0;
-                    border-radius: 8px;
-                    font-size: 14px;
-                    width: 280px;
+                    padding: 8px 16px 8px 36px;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    font-size: 15px;
+                    width: 300px;
                     transition: all 0.3s;
                 }
 
                 .search-input:focus {
                     outline: none;
-                    border-color: #ffd54f;
-                    box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.1);
+                    border-color: #ffc107;
                 }
 
                 .search-icon {
@@ -195,13 +273,14 @@ export default function ProductManagement() {
                     left: 12px;
                     top: 50%;
                     transform: translateY(-50%);
-                    font-size: 18px;
+                    font-size: 16px;
+                    color: #999;
                 }
 
                 .btn {
                     padding: 10px 20px;
                     border: none;
-                    border-radius: 8px;
+                    border-radius: 4px;
                     font-size: 14px;
                     font-weight: 600;
                     cursor: pointer;
@@ -212,14 +291,12 @@ export default function ProductManagement() {
                 }
 
                 .btn-primary {
-                    background: #ffd54f;
-                    color: #333;
+                    background: #ffc107;
+                    color: white;
                 }
 
                 .btn-primary:hover {
-                    background: #ffc107;
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 12px rgba(255, 193, 7, 0.3);
+                    background: #ffb300;
                 }
 
                 .alert {
@@ -244,8 +321,7 @@ export default function ProductManagement() {
 
                 .products-table-container {
                     background: white;
-                    border-radius: 12px;
-                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                    border-radius: 4px;
                     overflow: hidden;
                 }
 
@@ -255,121 +331,85 @@ export default function ProductManagement() {
                 }
 
                 .products-table thead {
-                    background: #f5f5f5;
+                    background: #f9f9f9;
                 }
 
                 .products-table th {
                     padding: 16px;
                     text-align: left;
                     font-weight: 600;
-                    color: #666;
-                    font-size: 13px;
-                    text-transform: uppercase;
-                    letter-spacing: 0.5px;
-                    border-bottom: 2px solid #e0e0e0;
+                    color: #555;
+                    font-size: 15px;
+                    border-bottom: 1px solid #e0e0e0;
                 }
 
                 .products-table td {
                     padding: 16px;
                     border-bottom: 1px solid #f0f0f0;
-                    color: #333;
-                }
-
-                .products-table tbody tr {
-                    transition: background 0.2s;
+                    color: #666;
+                    font-size: 15px;
                 }
 
                 .products-table tbody tr:hover {
                     background: #fafafa;
                 }
 
-                .product-image {
-                    width: 50px;
-                    height: 50px;
-                    border-radius: 8px;
-                    object-fit: cover;
-                    border: 2px solid #f0f0f0;
-                }
-
-                .product-code {
-                    font-family: 'Courier New', monospace;
-                    background: #f5f5f5;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    font-size: 12px;
-                    font-weight: 600;
-                }
-
-                .product-price {
-                    font-weight: 600;
-                    color: #2e7d32;
-                }
-
-                .product-stock {
+                .action-dropdown {
+                    position: relative;
                     display: inline-block;
-                    padding: 4px 12px;
-                    border-radius: 12px;
-                    font-size: 12px;
-                    font-weight: 600;
                 }
 
-                .stock-high {
-                    background: #e8f5e9;
-                    color: #2e7d32;
-                }
-
-                .stock-medium {
-                    background: #fff3e0;
-                    color: #f57c00;
-                }
-
-                .stock-low {
-                    background: #ffebee;
-                    color: #c62828;
-                }
-
-                .action-buttons {
-                    display: flex;
-                    gap: 8px;
-                }
-
-                .btn-icon {
-                    padding: 8px 12px;
+                .action-btn {
+                    background: #ffc107;
+                    color: white;
+                    padding: 8px 16px;
                     border: none;
-                    border-radius: 6px;
+                    border-radius: 4px;
                     cursor: pointer;
-                    transition: all 0.2s;
-                    font-size: 16px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    white-space: nowrap;
                 }
 
-                .btn-view {
-                    background: #e3f2fd;
-                    color: #1976d2;
+                .action-btn:hover {
+                    background: #ffb300;
                 }
 
-                .btn-view:hover {
-                    background: #bbdefb;
-                    transform: scale(1.1);
+                .dropdown-menu {
+                    position: absolute;
+                    top: calc(100% + 4px);
+                    right: 0;
+                    background: white;
+                    border: 1px solid #ddd;
+                    border-radius: 4px;
+                    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+                    min-width: 100%;
+                    z-index: 1000;
+                    overflow: hidden;
                 }
 
-                .btn-edit {
-                    background: #fff3e0;
-                    color: #f57c00;
+                .dropdown-item {
+                    padding: 10px 16px;
+                    cursor: pointer;
+                    font-size: 15px;
+                    color: #333;
+                    display: block;
+                    width: 100%;
+                    text-align: left;
+                    border: none;
+                    background: none;
+                    transition: background 0.2s;
                 }
 
-                .btn-edit:hover {
-                    background: #ffe0b2;
-                    transform: scale(1.1);
+                .dropdown-item:hover {
+                    background: #f5f5f5;
                 }
 
-                .btn-delete {
-                    background: #ffebee;
-                    color: #c62828;
-                }
-
-                .btn-delete:hover {
-                    background: #ffcdd2;
-                    transform: scale(1.1);
+                .dropdown-item:not(:last-child) {
+                    border-bottom: 1px solid #f0f0f0;
                 }
 
                 .modal-overlay {
@@ -570,22 +610,10 @@ export default function ProductManagement() {
 
             <div className="product-management">
                 <div className="pm-header">
-                    <h1 className="pm-title">📦 Product Management</h1>
-                    <div className="pm-actions">
-                        <div className="search-box">
-                            <span className="search-icon">🔍</span>
-                            <input
-                                type="text"
-                                className="search-input"
-                                placeholder="Search products..."
-                                value={searchTerm}
-                                onChange={(e) => setSearchTerm(e.target.value)}
-                            />
-                        </div>
-                        <button className="btn btn-primary" onClick={handleCreate}>
-                            ➕ Add Product
-                        </button>
-                    </div>
+                    <h1 className="pm-title">Product List</h1>
+                    <button className="btn-add-product" onClick={handleCreate}>
+                        ➕ ADD NEW PRODUCT
+                    </button>
                 </div>
 
                 {error && <div className="alert alert-error">{error}</div>}
@@ -593,107 +621,136 @@ export default function ProductManagement() {
 
                 {loading ? (
                     <div className="loading">Loading products...</div>
-                ) : filteredProducts.length === 0 ? (
-                    <div className="empty-state">
-                        <div className="empty-icon">📦</div>
-                        <div className="empty-text">
-                            {searchTerm ? "No products found" : "No products yet"}
-                        </div>
-                        <div className="empty-subtext">
-                            {searchTerm ? "Try a different search term" : "Click 'Add Product' to create your first product"}
-                        </div>
-                    </div>
                 ) : (
-                    <div className="products-table-container">
-                        <table className="products-table">
-                            <thead>
-                                <tr>
-                                    <th>Image</th>
-                                    <th>Code</th>
-                                    <th>Name</th>
-                                    <th>Unit Price</th>
-                                    <th>Total Stock</th>
-                                    <th>Status</th>
-                                    <th>Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredProducts.map((product) => (
-                                    <tr key={product.productCode}>
-                                        <td>
-                                            {product.imageUrl ? (
-                                                <img
-                                                    src={product.imageUrl}
-                                                    alt={product.name}
-                                                    className="product-image"
-                                                    onError={(e) => {
-                                                        e.target.style.display = 'none';
-                                                    }}
-                                                />
-                                            ) : (
-                                                <div className="product-image" style={{
-                                                    display: 'flex',
-                                                    alignItems: 'center',
-                                                    justifyContent: 'center',
-                                                    background: '#f5f5f5',
-                                                    fontSize: '24px'
-                                                }}>📦</div>
-                                            )}
-                                        </td>
-                                        <td>
-                                            <span className="product-code">{product.productCode}</span>
-                                        </td>
-                                        <td>{product.name}</td>
-                                        <td className="product-price">
-                                            ${parseFloat(product.unitPrice || 0).toFixed(2)}
-                                        </td>
-                                        <td>
-                                            <span className={`product-stock ${
-                                                product.totalQuantity > 50 ? 'stock-high' :
-                                                product.totalQuantity > 20 ? 'stock-medium' : 'stock-low'
-                                            }`}>
-                                                {product.totalQuantity || 0}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <span className={`product-stock ${
-                                                product.status === 'In Stock' ? 'stock-high' :
-                                                product.status === 'Low Stock' ? 'stock-medium' : 'stock-low'
-                                            }`}>
-                                                {product.status || 'Unknown'}
-                                                {product.needsReordering && ' ⚠️'}
-                                            </span>
-                                        </td>
-                                        <td>
-                                            <div className="action-buttons">
-                                                <button
-                                                    className="btn-icon btn-view"
-                                                    onClick={() => handleView(product)}
-                                                    title="View"
-                                                >
-                                                    👁️
-                                                </button>
-                                                <button
-                                                    className="btn-icon btn-edit"
-                                                    onClick={() => handleEdit(product)}
-                                                    title="Edit"
-                                                >
-                                                    ✏️
-                                                </button>
-                                                <button
-                                                    className="btn-icon btn-delete"
-                                                    onClick={() => handleDelete(product.productCode)}
-                                                    title="Delete"
-                                                >
-                                                    🗑️
-                                                </button>
-                                            </div>
-                                        </td>
-                                    </tr>
-                                ))}
-                            </tbody>
-                        </table>
-                    </div>
+                    <>
+                        <div className="table-controls">
+                            <div className="entries-control">
+                                <span>Products</span>
+                                <span style={{ marginLeft: '16px' }}>Show</span>
+                                <select 
+                                    className="entries-select"
+                                    value={entriesPerPage}
+                                    onChange={(e) => setEntriesPerPage(Number(e.target.value))}
+                                >
+                                    <option value="10">10</option>
+                                    <option value="25">25</option>
+                                    <option value="50">50</option>
+                                    <option value="100">100</option>
+                                </select>
+                            </div>
+                            <div className="search-control">
+                                <span className="search-icon">🔍</span>
+                                <input
+                                    type="text"
+                                    className="search-input"
+                                    placeholder="Search Product Name"
+                                    value={searchTerm}
+                                    onChange={(e) => setSearchTerm(e.target.value)}
+                                />
+                            </div>
+                        </div>
+
+                        {filteredProducts.length === 0 ? (
+                            <div className="empty-state">
+                                <div className="empty-icon">📦</div>
+                                <div className="empty-text">
+                                    {searchTerm ? "No products found" : "No products yet"}
+                                </div>
+                                <div className="empty-subtext">
+                                    {searchTerm ? "Try a different search term" : "Click 'ADD NEW PRODUCT' to create your first product"}
+                                </div>
+                            </div>
+                        ) : (
+                            <div className="products-table-container">
+                                <table className="products-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Image</th>
+                                            <th>Product Code</th>
+                                            <th>Name</th>
+                                            <th>Base Price</th>
+                                            <th>Options</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredProducts.map((product, index) => (
+                                            <tr key={product.productCode}>
+                                                <td>{index + 1}</td>
+                                                <td>
+                                                    {product.imageUrl ? (
+                                                        <img
+                                                            src={product.imageUrl}
+                                                            alt={product.name}
+                                                            style={{
+                                                                width: '50px',
+                                                                height: '50px',
+                                                                objectFit: 'cover',
+                                                                borderRadius: '4px',
+                                                                border: '1px solid #e0e0e0'
+                                                            }}
+                                                            onError={(e) => {
+                                                                e.target.src = 'data:image/svg+xml,%3Csvg xmlns="http://www.w3.org/2000/svg" width="50" height="50" viewBox="0 0 50 50"%3E%3Crect fill="%23f5f5f5" width="50" height="50"/%3E%3Ctext x="50%25" y="50%25" dominant-baseline="middle" text-anchor="middle" font-size="20"%3E📦%3C/text%3E%3C/svg%3E';
+                                                            }}
+                                                        />
+                                                    ) : (
+                                                        <div style={{
+                                                            width: '50px',
+                                                            height: '50px',
+                                                            display: 'flex',
+                                                            alignItems: 'center',
+                                                            justifyContent: 'center',
+                                                            background: '#f5f5f5',
+                                                            borderRadius: '4px',
+                                                            border: '1px solid #e0e0e0',
+                                                            fontSize: '24px'
+                                                        }}>
+                                                            📦
+                                                        </div>
+                                                    )}
+                                                </td>
+                                                <td>{product.productCode}</td>
+                                                <td>{product.name}</td>
+                                                <td>Rs.{parseFloat(product.unitPrice || 0).toFixed(0)}</td>
+                                                <td>
+                                                    <div className="action-dropdown">
+                                                        <button 
+                                                            className="action-btn"
+                                                            onClick={() => setActiveDropdown(activeDropdown === product.productCode ? null : product.productCode)}
+                                                        >
+                                                            Action ▼
+                                                        </button>
+                                                        {activeDropdown === product.productCode && (
+                                                            <div className="dropdown-menu">
+                                                                <button 
+                                                                    className="dropdown-item"
+                                                                    onClick={() => handleView(product)}
+                                                                >
+                                                                    View
+                                                                </button>
+                                                                <button 
+                                                                    className="dropdown-item"
+                                                                    onClick={() => handleEdit(product)}
+                                                                >
+                                                                    Edit
+                                                                </button>
+                                                                <button 
+                                                                    className="dropdown-item"
+                                                                    onClick={() => handleDelete(product.productCode)}
+                                                                >
+                                                                    Delete
+                                                                </button>
+                                                            </div>
+                                                        )}
+                                                    </div>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                        )}
+                    </>
                 )}
 
                 {showModal && (
@@ -761,16 +818,58 @@ export default function ProductManagement() {
                                     </div>
 
                                     <div className="form-group">
-                                        <label className="form-label">Image URL</label>
-                                        <input
-                                            type="text"
-                                            className="form-input"
-                                            name="imageUrl"
-                                            value={formData.imageUrl || ''}
-                                            onChange={handleInputChange}
-                                            disabled={modalMode === "view"}
-                                            placeholder="https://example.com/image.jpg (optional)"
-                                        />
+                                        <label className="form-label">Product Image</label>
+                                        
+                                        {modalMode !== "view" && (
+                                            <div>
+                                                <input
+                                                    type="file"
+                                                    className="form-input"
+                                                    accept="image/*"
+                                                    onChange={handleImageChange}
+                                                    disabled={modalMode === "view"}
+                                                    style={{ padding: '8px' }}
+                                                />
+                                                <div style={{ 
+                                                    fontSize: '13px', 
+                                                    color: '#666', 
+                                                    marginTop: '4px' 
+                                                }}>
+                                                    Upload an image or enter URL below
+                                                </div>
+                                            </div>
+                                        )}
+                                        
+                                        {imagePreview && (
+                                            <div style={{ 
+                                                marginTop: '12px',
+                                                textAlign: 'center'
+                                            }}>
+                                                <img 
+                                                    src={imagePreview} 
+                                                    alt="Preview" 
+                                                    style={{
+                                                        maxWidth: '200px',
+                                                        maxHeight: '200px',
+                                                        borderRadius: '8px',
+                                                        border: '2px solid #e0e0e0',
+                                                        objectFit: 'contain'
+                                                    }}
+                                                />
+                                            </div>
+                                        )}
+                                        
+                                        {modalMode !== "view" && (
+                                            <input
+                                                type="text"
+                                                className="form-input"
+                                                name="imageUrl"
+                                                value={formData.imageUrl || ''}
+                                                onChange={handleInputChange}
+                                                placeholder="Or paste image URL here (optional)"
+                                                style={{ marginTop: '8px' }}
+                                            />
+                                        )}
                                     </div>
 
                                     {modalMode === "view" && (

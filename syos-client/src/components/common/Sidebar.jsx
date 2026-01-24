@@ -10,11 +10,13 @@ export default function Sidebar({ logo, menuItems, activeMenu, onMenuClick, isOp
                     border-right: 1px solid #e0e0e0;
                     display: flex;
                     flex-direction: column;
-                    transition: width 0.3s ease;
+                    transition: all 0.3s ease;
+                    overflow: hidden;
                 }
                 
                 .sidebar.closed {
-                    width: 70px;
+                    width: 0;
+                    border-right: none;
                 }
                 
                 .logo-section {
@@ -26,8 +28,9 @@ export default function Sidebar({ logo, menuItems, activeMenu, onMenuClick, isOp
                 }
                 
                 .logo-section img {
-                    height: 40px;
+                    height: 60px;
                     width: auto;
+                    max-width: 90%;
                 }
                 
                 .menu-list {
