@@ -12,7 +12,7 @@ import java.util.Optional;
 
 /**
  * Data Access Object for Product
- * Handles raw SQL operations for product table
+ * Updated to work with inventory_locations table
  */
 public class ProductDao {
 
@@ -21,14 +21,18 @@ public class ProductDao {
      */
     public List<Product> findAll() throws SQLException {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_code, p.name, p.unit_price, p.image_url, " +
-                "COALESCE(s.shelf_quantity, 0) as shelf_quantity, " +
-                "COALESCE(m.warehouse_quantity, 0) as warehouse_quantity, " +
-                "COALESCE(w.available_quantity, 0) as website_quantity " +
+        String sql = "SELECT " +
+                "    p.product_code, " +
+                "    p.name, " +
+                "    p.unit_price, " +
+                "    p.image_url, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN shelf_inventory s ON p.product_code = s.product_code " +
-                "LEFT JOIN main_inventory m ON p.product_code = m.product_code " +
-                "LEFT JOIN website_inventory w ON p.product_code = w.product_code " +
+                "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
+                "WHERE p.is_deleted = FALSE " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url " +
                 "ORDER BY p.product_code";
 
         try (Connection conn = Db.getConnection();
@@ -47,15 +51,18 @@ public class ProductDao {
      * Find product by product code
      */
     public Optional<Product> findByProductCode(String productCode) throws SQLException {
-        String sql = "SELECT p.product_code, p.name, p.unit_price, p.image_url, " +
-                "COALESCE(s.shelf_quantity, 0) as shelf_quantity, " +
-                "COALESCE(m.warehouse_quantity, 0) as warehouse_quantity, " +
-                "COALESCE(w.available_quantity, 0) as website_quantity " +
+        String sql = "SELECT " +
+                "    p.product_code, " +
+                "    p.name, " +
+                "    p.unit_price, " +
+                "    p.image_url, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN shelf_inventory s ON p.product_code = s.product_code " +
-                "LEFT JOIN main_inventory m ON p.product_code = m.product_code " +
-                "LEFT JOIN website_inventory w ON p.product_code = w.product_code " +
-                "WHERE p.product_code = ?";
+                "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
+                "WHERE p.product_code = ? AND p.is_deleted = FALSE " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -74,7 +81,7 @@ public class ProductDao {
      * Check if product exists
      */
     public boolean existsByProductCode(String productCode) throws SQLException {
-        String sql = "SELECT COUNT(*) FROM products WHERE product_code = ?";
+        String sql = "SELECT COUNT(*) FROM products WHERE product_code = ? AND is_deleted = FALSE";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -93,7 +100,7 @@ public class ProductDao {
      * Insert new product
      */
     public Product save(Product product) throws SQLException {
-        String sql = "INSERT INTO products (product_code, name, unit_price, image_url) VALUES (?, ?, ?, ?)";
+        String sql = "INSERT INTO products (product_code, name, unit_price, image_url, is_deleted) VALUES (?, ?, ?, ?, FALSE)";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -115,7 +122,7 @@ public class ProductDao {
      * Update existing product
      */
     public Product update(Product product) throws SQLException {
-        String sql = "UPDATE products SET name = ?, unit_price = ?, image_url = ? WHERE product_code = ?";
+        String sql = "UPDATE products SET name = ?, unit_price = ?, image_url = ? WHERE product_code = ? AND is_deleted = FALSE";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -134,10 +141,10 @@ public class ProductDao {
     }
 
     /**
-     * Delete product by product code
+     * Soft delete product by product code
      */
     public boolean deleteByProductCode(String productCode) throws SQLException {
-        String sql = "DELETE FROM products WHERE product_code = ?";
+        String sql = "UPDATE products SET is_deleted = TRUE, deleted_at = NOW() WHERE product_code = ? AND is_deleted = FALSE";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -153,16 +160,20 @@ public class ProductDao {
      */
     public List<Product> findLowStockProducts(int threshold) throws SQLException {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_code, p.name, p.unit_price, p.image_url, " +
-                "COALESCE(s.shelf_quantity, 0) as shelf_quantity, " +
-                "COALESCE(m.warehouse_quantity, 0) as warehouse_quantity, " +
-                "COALESCE(w.available_quantity, 0) as website_quantity " +
+        String sql = "SELECT " +
+                "    p.product_code, " +
+                "    p.name, " +
+                "    p.unit_price, " +
+                "    p.image_url, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN shelf_inventory s ON p.product_code = s.product_code " +
-                "LEFT JOIN main_inventory m ON p.product_code = m.product_code " +
-                "LEFT JOIN website_inventory w ON p.product_code = w.product_code " +
-                "WHERE COALESCE(m.warehouse_quantity, 0) < ? " +
-                "ORDER BY m.warehouse_quantity ASC";
+                "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
+                "WHERE p.is_deleted = FALSE " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url " +
+                "HAVING warehouse_quantity < ? " +
+                "ORDER BY warehouse_quantity ASC";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -182,15 +193,19 @@ public class ProductDao {
      */
     public List<Product> findOutOfStockProducts() throws SQLException {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.product_code, p.name, p.unit_price, p.image_url, " +
-                "COALESCE(s.shelf_quantity, 0) as shelf_quantity, " +
-                "COALESCE(m.warehouse_quantity, 0) as warehouse_quantity, " +
-                "COALESCE(w.available_quantity, 0) as website_quantity " +
+        String sql = "SELECT " +
+                "    p.product_code, " +
+                "    p.name, " +
+                "    p.unit_price, " +
+                "    p.image_url, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN shelf_inventory s ON p.product_code = s.product_code " +
-                "LEFT JOIN main_inventory m ON p.product_code = m.product_code " +
-                "LEFT JOIN website_inventory w ON p.product_code = w.product_code " +
-                "WHERE (COALESCE(s.shelf_quantity, 0) + COALESCE(m.warehouse_quantity, 0)) = 0 " +
+                "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
+                "WHERE p.is_deleted = FALSE " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url " +
+                "HAVING (shelf_quantity + warehouse_quantity) = 0 " +
                 "ORDER BY p.product_code";
 
         try (Connection conn = Db.getConnection();
@@ -208,7 +223,7 @@ public class ProductDao {
      * Get total count of products
      */
     public int count() throws SQLException {
-        String sql = "SELECT COUNT(*) FROM products";
+        String sql = "SELECT COUNT(*) FROM products WHERE is_deleted = FALSE";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
