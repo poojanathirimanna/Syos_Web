@@ -211,4 +211,51 @@ export async function apiDeleteCategory(categoryId) {
     return await parseJsonSafe(res);
 }
 
+/* =========================
+   INVENTORY APIs
+   ========================= */
+
+// GET INVENTORY (with optional filters)
+export async function apiGetInventory(params = {}) {
+    const queryString = new URLSearchParams(params).toString();
+    const url = queryString 
+        ? `${BASE_URL}/api/admin/inventory?${queryString}` 
+        : `${BASE_URL}/api/admin/inventory`;
+    
+    const res = await fetch(url, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// RECEIVE STOCK
+export async function apiReceiveStock(data) {
+    const res = await fetch(`${BASE_URL}/api/admin/inventory/receive`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// TRANSFER STOCK
+export async function apiTransferStock(data) {
+    const res = await fetch(`${BASE_URL}/api/admin/inventory/transfer`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+    });
+
+    return await parseJsonSafe(res);
+}
+
 

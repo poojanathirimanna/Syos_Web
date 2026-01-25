@@ -20,17 +20,21 @@ export default function Sidebar({ logo, menuItems, activeMenu, onMenuClick, isOp
                 }
                 
                 .logo-section {
-                    padding: 24px;
+                    padding: 50px 15px;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     border-bottom: 1px solid #e0e0e0;
+                    background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
                 }
                 
                 .logo-section img {
-                    height: 60px;
+                    height: 160px;
                     width: auto;
-                    max-width: 90%;
+                    max-width: 100%;
+                    filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.15));
+                    image-rendering: -webkit-optimize-contrast;
+                    image-rendering: crisp-edges;
                 }
                 
                 .menu-list {

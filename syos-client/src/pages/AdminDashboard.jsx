@@ -5,6 +5,7 @@ import StatCard from "../components/dashboard/StatCard";
 import CompanyCard from "../components/dashboard/CompanyCard";
 import ProductManagement from "../components/dashboard/ProductManagement";
 import CategoryManagement from "../components/dashboard/CategoryManagement";
+import InventoryManagement from "../components/dashboard/InventoryManagement";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -263,7 +264,11 @@ export default function AdminDashboard({ user, onLogout }) {
                             <CategoryManagement />
                         )}
 
-                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && (
+                        {activeMenu === "inventory" && (
+                            <InventoryManagement />
+                        )}
+
+                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && (
                             <div>
                                 <h1 className="section-title">
                                     {menuItems.find(m => m.id === activeMenu)?.label}
