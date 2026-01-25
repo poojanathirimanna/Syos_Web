@@ -173,4 +173,42 @@ export async function apiGetCategories() {
     }
 }
 
+// CREATE CATEGORY
+export async function apiCreateCategory(categoryData) {
+    const res = await fetch(`${BASE_URL}/api/admin/categories`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(categoryData),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// UPDATE CATEGORY
+export async function apiUpdateCategory(categoryData) {
+    const res = await fetch(`${BASE_URL}/api/admin/categories`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(categoryData),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// DELETE CATEGORY
+export async function apiDeleteCategory(categoryId) {
+    const res = await fetch(`${BASE_URL}/api/admin/categories/${categoryId}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
 

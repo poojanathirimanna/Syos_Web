@@ -220,11 +220,11 @@ export default function ProductManagement() {
                 }
 
                 .btn-add-product {
-                    background: #ffc107;
+                    background: #52B788;
                     color: white;
                     padding: 12px 24px;
                     border: none;
-                    border-radius: 4px;
+                    border-radius: 8px;
                     font-size: 15px;
                     font-weight: 600;
                     cursor: pointer;
@@ -234,11 +234,13 @@ export default function ProductManagement() {
                     transition: all 0.2s;
                     text-transform: uppercase;
                     letter-spacing: 0.5px;
+                    box-shadow: 0 2px 8px rgba(82, 183, 136, 0.2);
                 }
 
                 .btn-add-product:hover {
-                    background: #ffb300;
-                    box-shadow: 0 2px 8px rgba(255, 193, 7, 0.3);
+                    background: #40916C;
+                    box-shadow: 0 4px 12px rgba(82, 183, 136, 0.3);
+                    transform: translateY(-1px);
                 }
 
                 .table-controls {
@@ -272,17 +274,19 @@ export default function ProductManagement() {
                 }
 
                 .search-input {
-                    padding: 8px 16px 8px 36px;
-                    border: 1px solid #ddd;
-                    border-radius: 4px;
+                    padding: 10px 16px 10px 36px;
+                    border: 2px solid #e0e0e0;
+                    border-radius: 8px;
                     font-size: 15px;
                     width: 300px;
                     transition: all 0.3s;
+                    background: white;
                 }
 
                 .search-input:focus {
                     outline: none;
-                    border-color: #ffc107;
+                    border-color: #52B788;
+                    box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.1);
                 }
 
                 .search-icon {
@@ -308,12 +312,15 @@ export default function ProductManagement() {
                 }
 
                 .btn-primary {
-                    background: #ffc107;
+                    background: #52B788;
                     color: white;
+                    box-shadow: 0 2px 8px rgba(82, 183, 136, 0.2);
                 }
 
                 .btn-primary:hover {
-                    background: #ffb300;
+                    background: #40916C;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 12px rgba(82, 183, 136, 0.3);
                 }
 
                 .alert {
@@ -377,11 +384,11 @@ export default function ProductManagement() {
                 }
 
                 .action-btn {
-                    background: #ffc107;
+                    background: #52B788;
                     color: white;
                     padding: 8px 16px;
                     border: none;
-                    border-radius: 4px;
+                    border-radius: 6px;
                     cursor: pointer;
                     font-size: 14px;
                     font-weight: 600;
@@ -389,10 +396,14 @@ export default function ProductManagement() {
                     align-items: center;
                     gap: 8px;
                     white-space: nowrap;
+                    box-shadow: 0 2px 4px rgba(82, 183, 136, 0.2);
+                    transition: all 0.2s;
                 }
 
                 .action-btn:hover {
-                    background: #ffb300;
+                    background: #40916C;
+                    transform: translateY(-1px);
+                    box-shadow: 0 4px 8px rgba(82, 183, 136, 0.3);
                 }
 
                 .dropdown-menu {
@@ -534,8 +545,8 @@ export default function ProductManagement() {
                 .form-input:focus,
                 .form-textarea:focus {
                     outline: none;
-                    border-color: #ffd54f;
-                    box-shadow: 0 0 0 3px rgba(255, 213, 79, 0.1);
+                    border-color: #52B788;
+                    box-shadow: 0 0 0 3px rgba(82, 183, 136, 0.1);
                 }
 
                 .form-input:disabled,

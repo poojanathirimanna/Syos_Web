@@ -4,6 +4,7 @@ import Header from "../components/common/Header";
 import StatCard from "../components/dashboard/StatCard";
 import CompanyCard from "../components/dashboard/CompanyCard";
 import ProductManagement from "../components/dashboard/ProductManagement";
+import CategoryManagement from "../components/dashboard/CategoryManagement";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -11,12 +12,36 @@ export default function AdminDashboard({ user, onLogout }) {
 
     const [activeMenu, setActiveMenu] = useState("dashboard");
     const [sidebarOpen, setSidebarOpen] = useState(true);
+    const [expandedMenus, setExpandedMenus] = useState(["product-management"]);
 
     const menuItems = [
         { id: "dashboard", icon: "📊", label: "Dashboard" },
-        { id: "product", icon: "📦", label: "Product" },
+        { 
+            id: "product-management", 
+            icon: "📦", 
+            label: "Product Management",
+            submenu: [
+                { id: "products", icon: "🛍️", label: "Products" },
+                { id: "categories", icon: "📁", label: "Categories" }
+            ]
+        },
         { id: "inventory", icon: "📋", label: "Inventory" },
     ];
+
+    const handleMenuClick = (id) => {
+        // Check if it's a parent menu with submenu
+        const menuItem = menuItems.find(item => item.id === id);
+        if (menuItem && menuItem.submenu) {
+            // Toggle expansion
+            setExpandedMenus(prev => 
+                prev.includes(id) 
+                    ? prev.filter(menuId => menuId !== id)
+                    : [...prev, id]
+            );
+        } else {
+            setActiveMenu(id);
+        }
+    };
 
     const companies = [
         { name: "DSI", color: "blue" },
@@ -118,9 +143,10 @@ export default function AdminDashboard({ user, onLogout }) {
                     logo={syosLogo}
                     menuItems={menuItems}
                     activeMenu={activeMenu}
-                    onMenuClick={setActiveMenu}
+                    onMenuClick={handleMenuClick}
                     isOpen={sidebarOpen}
-                    accentColor="#ffd54f"
+                    accentColor="#52B788"
+                    expandedMenus={expandedMenus}
                 />
 
                 <main className="main-content">
@@ -229,11 +255,15 @@ export default function AdminDashboard({ user, onLogout }) {
                             </div>
                         )}
 
-                        {activeMenu === "product" && (
+                        {activeMenu === "products" && (
                             <ProductManagement />
                         )}
 
-                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "product" && (
+                        {activeMenu === "categories" && (
+                            <CategoryManagement />
+                        )}
+
+                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && (
                             <div>
                                 <h1 className="section-title">
                                     {menuItems.find(m => m.id === activeMenu)?.label}
@@ -247,4 +277,3 @@ export default function AdminDashboard({ user, onLogout }) {
         </>
     );
 }
-
