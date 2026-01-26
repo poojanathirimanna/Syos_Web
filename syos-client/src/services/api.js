@@ -258,4 +258,66 @@ export async function apiTransferStock(data) {
     return await parseJsonSafe(res);
 }
 
+/* =========================
+   CASHIER APIs
+   ========================= */
+
+// GET ALL CASHIERS
+export async function apiGetCashiers() {
+    const res = await fetch(`${BASE_URL}/api/admin/cashiers`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GET SINGLE CASHIER
+export async function apiGetCashier(userId) {
+    const res = await fetch(`${BASE_URL}/api/admin/cashiers/${userId}`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// CREATE CASHIER
+export async function apiCreateCashier(data) {
+    const res = await fetch(`${BASE_URL}/api/admin/cashiers`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// UPDATE CASHIER
+export async function apiUpdateCashier(data) {
+    const res = await fetch(`${BASE_URL}/api/admin/cashiers`, {
+        method: "PUT",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(data),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// DEACTIVATE CASHIER
+export async function apiDeactivateCashier(userId) {
+    const res = await fetch(`${BASE_URL}/api/admin/cashiers/${userId}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
 

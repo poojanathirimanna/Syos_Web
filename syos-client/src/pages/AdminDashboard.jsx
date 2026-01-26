@@ -6,6 +6,9 @@ import CompanyCard from "../components/dashboard/CompanyCard";
 import ProductManagement from "../components/dashboard/ProductManagement";
 import CategoryManagement from "../components/dashboard/CategoryManagement";
 import InventoryManagement from "../components/dashboard/InventoryManagement";
+import CashierManagement from "../components/dashboard/CashierManagement";
+import ReportsManagement from "../components/dashboard/ReportsManagement";
+import OrdersManagement from "../components/dashboard/OrdersManagement";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function AdminDashboard({ user, onLogout }) {
@@ -27,6 +30,9 @@ export default function AdminDashboard({ user, onLogout }) {
             ]
         },
         { id: "inventory", icon: "📋", label: "Inventory" },
+        { id: "orders", icon: "🛒", label: "Orders" },
+        { id: "reports", icon: "📈", label: "Reports" },
+        { id: "cashiers", icon: "👤", label: "Cashiers" },
     ];
 
     const handleMenuClick = (id) => {
@@ -268,7 +274,19 @@ export default function AdminDashboard({ user, onLogout }) {
                             <InventoryManagement />
                         )}
 
-                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && (
+                        {activeMenu === "cashiers" && (
+                            <CashierManagement />
+                        )}
+
+                        {activeMenu === "orders" && (
+                            <OrdersManagement />
+                        )}
+
+                        {activeMenu === "reports" && (
+                            <ReportsManagement />
+                        )}
+
+                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && activeMenu !== "cashiers" && activeMenu !== "orders" && activeMenu !== "reports" && (
                             <div>
                                 <h1 className="section-title">
                                     {menuItems.find(m => m.id === activeMenu)?.label}

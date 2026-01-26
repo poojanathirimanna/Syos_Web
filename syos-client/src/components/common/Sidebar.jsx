@@ -26,6 +26,12 @@ export default function Sidebar({ logo, menuItems, activeMenu, onMenuClick, isOp
                     justify-content: center;
                     border-bottom: 1px solid #e0e0e0;
                     background: linear-gradient(135deg, #ffffff 0%, #f9f9f9 100%);
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .logo-section:hover {
+                    background: linear-gradient(135deg, #f9f9f9 0%, #f5f5f5 100%);
                 }
                 
                 .logo-section img {
@@ -35,6 +41,11 @@ export default function Sidebar({ logo, menuItems, activeMenu, onMenuClick, isOp
                     filter: drop-shadow(0 3px 8px rgba(0, 0, 0, 0.15));
                     image-rendering: -webkit-optimize-contrast;
                     image-rendering: crisp-edges;
+                    transition: transform 0.2s ease;
+                }
+
+                .logo-section:hover img {
+                    transform: scale(1.05);
                 }
                 
                 .menu-list {
@@ -140,7 +151,7 @@ export default function Sidebar({ logo, menuItems, activeMenu, onMenuClick, isOp
             `}</style>
 
             <aside className={`sidebar ${isOpen ? '' : 'closed'}`}>
-                <div className="logo-section">
+                <div className="logo-section" onClick={() => onMenuClick('dashboard')}>
                     <img src={logo} alt="SYOS" />
                 </div>
                 <nav className="menu-list">
