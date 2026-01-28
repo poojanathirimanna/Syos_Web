@@ -1,48 +1,73 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { apiGetAllBills, apiGetBillDetails } from "../../services/api";
 
 export default function OrdersManagement() {
+    const [bills, setBills] = useState([]);
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState("");
     const [searchQuery, setSearchQuery] = useState("");
     const [statusFilter, setStatusFilter] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
+    const [selectedBill, setSelectedBill] = useState(null);
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
-    // Mock orders data
-    const mockOrders = [
-        { id: "ORD-001", date: "2024-01-15 14:30", customer: "Juan dela Cruz", items: 5, total: "₱1,250.00", status: "completed" },
-        { id: "ORD-002", date: "2024-01-15 15:45", customer: "Maria Santos", items: 3, total: "₱850.00", status: "completed" },
-        { id: "ORD-003", date: "2024-01-15 16:20", customer: "Pedro Garcia", items: 8, total: "₱2,100.00", status: "processing" },
-        { id: "ORD-004", date: "2024-01-15 17:10", customer: "Ana Reyes", items: 2, total: "₱450.00", status: "pending" },
-        { id: "ORD-005", date: "2024-01-15 18:05", customer: "Carlos Lopez", items: 6, total: "₱1,680.00", status: "completed" },
-        { id: "ORD-006", date: "2024-01-15 19:15", customer: "Elena Cruz", items: 4, total: "₱920.00", status: "processing" },
-        { id: "ORD-007", date: "2024-01-15 20:30", customer: "Miguel Ramos", items: 7, total: "₱1,890.00", status: "pending" },
-        { id: "ORD-008", date: "2024-01-15 21:00", customer: "Sofia Mendoza", items: 3, total: "₱750.00", status: "cancelled" },
-        { id: "ORD-009", date: "2024-01-16 09:15", customer: "Diego Torres", items: 5, total: "₱1,320.00", status: "completed" },
-        { id: "ORD-010", date: "2024-01-16 10:40", customer: "Isabella Flores", items: 9, total: "₱2,450.00", status: "processing" },
-        { id: "ORD-011", date: "2024-01-16 11:25", customer: "Lucas Morales", items: 2, total: "₱380.00", status: "completed" },
-        { id: "ORD-012", date: "2024-01-16 12:50", customer: "Valentina Diaz", items: 6, total: "₱1,540.00", status: "pending" },
-    ];
+    useEffect(() => {
+        loadBills();
+    }, []);
 
-    // Filter orders
-    const filteredOrders = mockOrders.filter(order => {
-        const matchesSearch = order.id.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                            order.customer.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || order.status === statusFilter;
+    const loadBills = async () => {
+        try {
+            setLoading(true);
+            setError("");
+            const response = await apiGetAllBills();
+            if (response.success) {
+                setBills(response.data || []);
+            } else {
+                setError(response.message || "Failed to load bills");
+            }
+        } catch (err) {
+            setError("Error loading bills: " + err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const handleViewDetails = async (billNumber) => {
+        try {
+            const response = await apiGetBillDetails(billNumber);
+            if (response.success) {
+                setSelectedBill(response.data);
+                setShowDetailsModal(true);
+            } else {
+                setError(response.message || "Failed to load bill details");
+            }
+        } catch (err) {
+            setError("Error loading bill details: " + err.message);
+        }
+    };
+
+    // Filter bills
+    const filteredBills = bills.filter(bill => {
+        const matchesSearch = bill.billNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                            bill.cashierName?.toLowerCase().includes(searchQuery.toLowerCase());
+        const matchesStatus = statusFilter === "all" || bill.status === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
     // Pagination
-    const totalPages = Math.ceil(filteredOrders.length / itemsPerPage);
+    const totalPages = Math.ceil(filteredBills.length / itemsPerPage);
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
-    const paginatedOrders = filteredOrders.slice(startIndex, endIndex);
+    const paginatedBills = filteredBills.slice(startIndex, endIndex);
 
     // Status counts
     const statusCounts = {
-        all: mockOrders.length,
-        pending: mockOrders.filter(o => o.status === "pending").length,
-        processing: mockOrders.filter(o => o.status === "processing").length,
-        completed: mockOrders.filter(o => o.status === "completed").length,
-        cancelled: mockOrders.filter(o => o.status === "cancelled").length,
+        all: bills.length,
+        pending: bills.filter(b => b.status === "pending").length,
+        processing: bills.filter(b => b.status === "processing").length,
+        completed: bills.filter(b => b.status === "completed").length,
+        cancelled: bills.filter(b => b.status === "cancelled").length,
     };
 
     const getStatusBadge = (status) => {
@@ -52,7 +77,7 @@ export default function OrdersManagement() {
             completed: { bg: "linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%)", color: "#065f46", border: "#34d399" },
             cancelled: { bg: "linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)", color: "#991b1b", border: "#f87171" },
         };
-        return styles[status] || styles.pending;
+        return styles[status] || styles.completed;
     };
 
     return (
@@ -361,32 +386,52 @@ export default function OrdersManagement() {
                 <div className="orders-header">
                     <h1 className="orders-title">
                         <span>🛒</span>
-                        Orders Management
+                        Bills/Orders Management
                     </h1>
                 </div>
 
-                <div className="summary-stats">
-                    <div className="stat-card">
-                        <div className="stat-label">Total Orders</div>
-                        <div className="stat-value">{statusCounts.all}</div>
+                {error && (
+                    <div style={{
+                        padding: '16px',
+                        marginBottom: '20px',
+                        background: 'linear-gradient(135deg, #fee2e2 0%, #fecaca 100%)',
+                        color: '#991b1b',
+                        borderRadius: '12px',
+                        fontWeight: 600
+                    }}>
+                        ⚠️ {error}
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Pending</div>
-                        <div className="stat-value" style={{color: '#d97706'}}>{statusCounts.pending}</div>
+                )}
+
+                {loading ? (
+                    <div style={{ textAlign: 'center', padding: '60px', color: '#888' }}>
+                        <div style={{ fontSize: '24px', marginBottom: '12px' }}>⏳</div>
+                        Loading bills...
                     </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Processing</div>
-                        <div className="stat-value" style={{color: '#2563eb'}}>{statusCounts.processing}</div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Completed</div>
-                        <div className="stat-value" style={{color: '#059669'}}>{statusCounts.completed}</div>
-                    </div>
-                    <div className="stat-card">
-                        <div className="stat-label">Cancelled</div>
-                        <div className="stat-value" style={{color: '#dc2626'}}>{statusCounts.cancelled}</div>
-                    </div>
-                </div>
+                ) : (
+                    <>
+                        <div className="summary-stats">
+                            <div className="stat-card">
+                                <div className="stat-label">Total Bills</div>
+                                <div className="stat-value">{statusCounts.all}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Pending</div>
+                                <div className="stat-value" style={{color: '#d97706'}}>{statusCounts.pending}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Processing</div>
+                                <div className="stat-value" style={{color: '#2563eb'}}>{statusCounts.processing}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Completed</div>
+                                <div className="stat-value" style={{color: '#059669'}}>{statusCounts.completed}</div>
+                            </div>
+                            <div className="stat-card">
+                                <div className="stat-label">Cancelled</div>
+                                <div className="stat-value" style={{color: '#dc2626'}}>{statusCounts.cancelled}</div>
+                            </div>
+                        </div>
 
                 <div className="controls-section">
                     <div className="search-box">
@@ -394,7 +439,7 @@ export default function OrdersManagement() {
                         <input
                             type="text"
                             className="search-input"
-                            placeholder="Search by Order ID or Customer Name..."
+                            placeholder="Search by Bill Number or Cashier Name..."
                             value={searchQuery}
                             onChange={(e) => {
                                 setSearchQuery(e.target.value);
@@ -456,26 +501,26 @@ export default function OrdersManagement() {
                     <table className="orders-table">
                         <thead>
                             <tr>
-                                <th>Order ID</th>
+                                <th>Bill Number</th>
                                 <th>Date & Time</th>
-                                <th>Customer</th>
+                                <th>Cashier</th>
                                 <th>Items</th>
-                                <th>Total</th>
+                                <th>Total Amount</th>
                                 <th>Status</th>
                                 <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
-                            {paginatedOrders.length > 0 ? (
-                                paginatedOrders.map(order => {
-                                    const statusStyle = getStatusBadge(order.status);
+                            {paginatedBills.length > 0 ? (
+                                paginatedBills.map(bill => {
+                                    const statusStyle = getStatusBadge(bill.status || 'completed');
                                     return (
-                                        <tr key={order.id}>
-                                            <td className="order-id">{order.id}</td>
-                                            <td>{order.date}</td>
-                                            <td>{order.customer}</td>
-                                            <td>{order.items} items</td>
-                                            <td style={{fontWeight: 700}}>{order.total}</td>
+                                        <tr key={bill.billNumber}>
+                                            <td className="order-id">{bill.billNumber}</td>
+                                            <td>{bill.createdAt || bill.billDate || 'N/A'}</td>
+                                            <td>{bill.cashierName || bill.cashierId || 'N/A'}</td>
+                                            <td>{bill.itemCount || bill.items?.length || 0} items</td>
+                                            <td style={{fontWeight: 700}}>₱{Number(bill.totalAmount || 0).toFixed(2)}</td>
                                             <td>
                                                 <span 
                                                     className="status-badge"
@@ -485,12 +530,17 @@ export default function OrdersManagement() {
                                                         borderColor: statusStyle.border
                                                     }}
                                                 >
-                                                    {order.status}
+                                                    {bill.status || 'completed'}
                                                 </span>
                                             </td>
                                             <td>
                                                 <div className="action-buttons">
-                                                    <button className="btn-action btn-view">👁️ View</button>
+                                                    <button 
+                                                        className="btn-action btn-view"
+                                                        onClick={() => handleViewDetails(bill.billNumber)}
+                                                    >
+                                                        👁️ View
+                                                    </button>
                                                 </div>
                                             </td>
                                         </tr>
@@ -499,18 +549,18 @@ export default function OrdersManagement() {
                             ) : (
                                 <tr>
                                     <td colSpan="7" className="no-orders">
-                                        No orders found
+                                        {bills.length === 0 ? "No bills found" : "No bills match your search"}
                                     </td>
                                 </tr>
                             )}
                         </tbody>
                     </table>
 
-                    {filteredOrders.length > 0 && (
+                    {filteredBills.length > 0 && (
                         <div className="pagination">
                             <div className="pagination-info">
                                 <span>
-                                    Showing {startIndex + 1}-{Math.min(endIndex, filteredOrders.length)} of {filteredOrders.length}
+                                    Showing {startIndex + 1}-{Math.min(endIndex, filteredBills.length)} of {filteredBills.length}
                                 </span>
                                 <select
                                     className="items-per-page"
@@ -584,6 +634,8 @@ export default function OrdersManagement() {
                         </div>
                     )}
                 </div>
+                    </>
+                )}
             </div>
         </>
     );

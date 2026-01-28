@@ -320,4 +320,50 @@ export async function apiDeactivateCashier(userId) {
     return await parseJsonSafe(res);
 }
 
+/* =========================
+   BILLS/ORDERS APIs
+   ========================= */
 
+// GET ALL BILLS (Admin/Manager)
+export async function apiGetAllBills() {
+    const res = await fetch(`${BASE_URL}/api/admin/bills`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GET CASHIER BILLS (Cashier - own bills only)
+export async function apiGetCashierBills() {
+    const res = await fetch(`${BASE_URL}/api/cashier/bills`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GET BILL DETAILS
+export async function apiGetBillDetails(billNumber) {
+    const res = await fetch(`${BASE_URL}/api/cashier/bills/${billNumber}`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// CREATE BILL (Cashier)
+export async function apiCreateBill(billData) {
+    const res = await fetch(`${BASE_URL}/api/cashier/bills`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(billData),
+    });
+
+    return await parseJsonSafe(res);
+}
