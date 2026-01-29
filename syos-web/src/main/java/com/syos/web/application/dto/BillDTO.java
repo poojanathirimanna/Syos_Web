@@ -8,14 +8,16 @@ import java.util.List;
  * DTO for Bill/Invoice
  */
 public class BillDTO {
-    private String billNumber;      // Changed from Long billId
+    private String billNumber;
     private LocalDateTime billDate;
-    private BigDecimal subtotal;    // NEW
-    private BigDecimal discountAmount;  // NEW
+    private BigDecimal subtotal;
+    private BigDecimal discountAmount;
     private BigDecimal totalAmount;
-    private String userId;          // Cashier who created it
-    private String cashierName;     // Full name of cashier
-    private String paymentMethod;   // Actually "channel" in DB
+    private BigDecimal amountPaid;      // 🆕 NEW
+    private BigDecimal changeAmount;    // 🆕 NEW
+    private String userId;
+    private String cashierName;
+    private String paymentMethod;
     private List<BillItemDTO> items;
 
     public BillDTO() {
@@ -60,6 +62,23 @@ public class BillDTO {
 
     public void setTotalAmount(BigDecimal totalAmount) {
         this.totalAmount = totalAmount;
+    }
+
+    // 🆕 NEW GETTERS/SETTERS
+    public BigDecimal getAmountPaid() {
+        return amountPaid;
+    }
+
+    public void setAmountPaid(BigDecimal amountPaid) {
+        this.amountPaid = amountPaid;
+    }
+
+    public BigDecimal getChangeAmount() {
+        return changeAmount;
+    }
+
+    public void setChangeAmount(BigDecimal changeAmount) {
+        this.changeAmount = changeAmount;
     }
 
     public String getUserId() {

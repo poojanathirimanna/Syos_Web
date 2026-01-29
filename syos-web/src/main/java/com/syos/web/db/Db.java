@@ -20,7 +20,7 @@ public final class Db {
             config.setJdbcUrl("jdbc:mysql://localhost:3306/syos_billing_Web" +
                     "?useSSL=false" +
                     "&allowPublicKeyRetrieval=true" +
-                    "&serverTimezone=UTC");
+                    "&serverTimezone=Asia/Colombo");  // ✅ FIXED!
             config.setUsername("root");
             config.setPassword("poojana3540");
 
@@ -32,7 +32,7 @@ public final class Db {
             config.setMaxLifetime(1800000);     // 30 minutes max lifetime
 
             dataSource = new HikariDataSource(config);
-            System.out.println("✅ HikariCP Connection Pool initialized: 20 connections ready");
+            System.out.println("✅ HikariCP Connection Pool initialized: 20 connections ready (Asia/Colombo timezone)");
 
         } catch (Exception e) {
             System.err.println("❌ Failed to initialize HikariCP");

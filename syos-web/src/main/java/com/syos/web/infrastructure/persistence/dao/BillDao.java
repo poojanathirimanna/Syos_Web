@@ -45,12 +45,15 @@ public class BillDao {
      * Returns the bill number
      */
     public String createBill(String cashierId, String channel, BigDecimal subtotal,
-                             BigDecimal discountAmount, BigDecimal totalAmount) throws SQLException {
+                             BigDecimal discountAmount, BigDecimal totalAmount,
+                             BigDecimal amountPaid, BigDecimal changeAmount) throws SQLException {
 
         String billNumber = generateBillNumber();
 
+        // 🆕 UPDATED: Added amount_paid and change_amount
         String sql = "INSERT INTO bills (bill_number, transaction_date, cashier_id, channel, " +
-                "subtotal, discount_amount, total_amount) VALUES (?, NOW(), ?, ?, ?, ?, ?)";
+                "subtotal, discount_amount, total_amount, amount_paid, change_amount) " +
+                "VALUES (?, NOW(), ?, ?, ?, ?, ?, ?, ?)";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -61,6 +64,8 @@ public class BillDao {
             stmt.setBigDecimal(4, subtotal);
             stmt.setBigDecimal(5, discountAmount);
             stmt.setBigDecimal(6, totalAmount);
+            stmt.setBigDecimal(7, amountPaid);      // 🆕 NEW
+            stmt.setBigDecimal(8, changeAmount);    // 🆕 NEW
 
             int rowsAffected = stmt.executeUpdate();
 
@@ -99,8 +104,10 @@ public class BillDao {
     public List<BillDTO> getAllBills() throws SQLException {
         List<BillDTO> bills = new ArrayList<>();
 
+        // 🆕 UPDATED: Added amount_paid and change_amount to SELECT
         String sql = "SELECT b.bill_number, b.transaction_date, b.total_amount, b.cashier_id, " +
-                "u.full_name, b.channel, b.subtotal, b.discount_amount " +
+                "u.full_name, b.channel, b.subtotal, b.discount_amount, " +
+                "b.amount_paid, b.change_amount " +
                 "FROM bills b " +
                 "LEFT JOIN users u ON b.cashier_id = u.user_id " +
                 "ORDER BY b.transaction_date DESC";
@@ -119,6 +126,8 @@ public class BillDao {
                 bill.setPaymentMethod(rs.getString("channel"));
                 bill.setSubtotal(rs.getBigDecimal("subtotal"));
                 bill.setDiscountAmount(rs.getBigDecimal("discount_amount"));
+                bill.setAmountPaid(rs.getBigDecimal("amount_paid"));        // 🆕 NEW
+                bill.setChangeAmount(rs.getBigDecimal("change_amount"));    // 🆕 NEW
                 bills.add(bill);
             }
         }
@@ -132,8 +141,10 @@ public class BillDao {
     public List<BillDTO> getBillsByCashier(String cashierId) throws SQLException {
         List<BillDTO> bills = new ArrayList<>();
 
+        // 🆕 UPDATED: Added amount_paid and change_amount to SELECT
         String sql = "SELECT b.bill_number, b.transaction_date, b.total_amount, b.cashier_id, " +
-                "u.full_name, b.channel, b.subtotal, b.discount_amount " +
+                "u.full_name, b.channel, b.subtotal, b.discount_amount, " +
+                "b.amount_paid, b.change_amount " +
                 "FROM bills b " +
                 "LEFT JOIN users u ON b.cashier_id = u.user_id " +
                 "WHERE b.cashier_id = ? " +
@@ -155,6 +166,8 @@ public class BillDao {
                     bill.setPaymentMethod(rs.getString("channel"));
                     bill.setSubtotal(rs.getBigDecimal("subtotal"));
                     bill.setDiscountAmount(rs.getBigDecimal("discount_amount"));
+                    bill.setAmountPaid(rs.getBigDecimal("amount_paid"));        // 🆕 NEW
+                    bill.setChangeAmount(rs.getBigDecimal("change_amount"));    // 🆕 NEW
                     bills.add(bill);
                 }
             }
@@ -167,8 +180,10 @@ public class BillDao {
      * Get single bill with items
      */
     public BillDTO getBillByNumber(String billNumber) throws SQLException {
+        // 🆕 UPDATED: Added amount_paid and change_amount to SELECT
         String sql = "SELECT b.bill_number, b.transaction_date, b.total_amount, b.cashier_id, " +
-                "u.full_name, b.channel, b.subtotal, b.discount_amount " +
+                "u.full_name, b.channel, b.subtotal, b.discount_amount, " +
+                "b.amount_paid, b.change_amount " +
                 "FROM bills b " +
                 "LEFT JOIN users u ON b.cashier_id = u.user_id " +
                 "WHERE b.bill_number = ?";
@@ -189,6 +204,8 @@ public class BillDao {
                     bill.setPaymentMethod(rs.getString("channel"));
                     bill.setSubtotal(rs.getBigDecimal("subtotal"));
                     bill.setDiscountAmount(rs.getBigDecimal("discount_amount"));
+                    bill.setAmountPaid(rs.getBigDecimal("amount_paid"));        // 🆕 NEW
+                    bill.setChangeAmount(rs.getBigDecimal("change_amount"));    // 🆕 NEW
                     bill.setItems(getBillItems(billNumber));
                     return bill;
                 }
@@ -221,7 +238,6 @@ public class BillDao {
                     BigDecimal discountApplied = rs.getBigDecimal("discount_applied");
                     int quantity = rs.getInt("quantity");
 
-                    // Calculate total: (price * quantity) - discount
                     BigDecimal itemTotal = priceAtSale.multiply(BigDecimal.valueOf(quantity))
                             .subtract(discountApplied);
 
@@ -243,28 +259,27 @@ public class BillDao {
     /**
      * Call stored procedure to deduct stock
      */
-    public void deductStockForSale(String productCode, int quantity, String billNumber, String userId) throws SQLException {
-        String sql = "{CALL deduct_stock_for_sale(?, ?, ?, ?, ?)}";  // 5 parameters: 4 IN, 1 OUT
+    public int deductStockForSale(String productCode, int quantity, String billNumber, String userId) throws SQLException {
+        String sql = "{CALL deduct_stock_for_sale(?, ?, ?, ?, ?)}";
 
         try (Connection conn = Db.getConnection();
              CallableStatement stmt = conn.prepareCall(sql)) {
 
-            // Set INPUT parameters
             stmt.setString(1, productCode);
             stmt.setInt(2, quantity);
             stmt.setString(3, billNumber);
             stmt.setString(4, userId);
-
-            // Register OUTPUT parameter
             stmt.registerOutParameter(5, java.sql.Types.INTEGER);
 
-            // Execute
             stmt.execute();
 
-            // Optional: Get the batch_id that was used
             int batchIdUsed = stmt.getInt(5);
-            System.out.println("Deducted from batch_id: " + batchIdUsed);
 
+            return batchIdUsed;
+
+        } catch (SQLException e) {
+            System.err.println("Error calling deduct_stock_for_sale: " + e.getMessage());
+            throw e;
         }
     }
-    }
+}

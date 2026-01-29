@@ -1,12 +1,14 @@
 package com.syos.web.application.dto;
 
+import java.math.BigDecimal;
 import java.util.List;
 
 /**
  * DTO for creating a new bill
  */
 public class CreateBillRequest {
-    private String paymentMethod;  // CASH, CARD, etc.
+    private String paymentMethod;
+    private BigDecimal amountPaid;  // 🆕 NEW - Optional, for CASH payments
     private List<BillItem> items;
 
     public CreateBillRequest() {
@@ -71,6 +73,15 @@ public class CreateBillRequest {
 
     public void setPaymentMethod(String paymentMethod) {
         this.paymentMethod = paymentMethod;
+    }
+
+    // 🆕 NEW GETTER/SETTER
+    public BigDecimal getAmountPaid() {
+        return amountPaid;
+    }
+
+    public void setAmountPaid(BigDecimal amountPaid) {
+        this.amountPaid = amountPaid;
     }
 
     public List<BillItem> getItems() {
