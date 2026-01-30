@@ -25,8 +25,8 @@ public final class Db {
             config.setPassword("poojana3540");
 
             // Connection pool settings for concurrency
-            config.setMaximumPoolSize(20);      // 20 connections ready
-            config.setMinimumIdle(5);           // Keep 5 always open
+            config.setMaximumPoolSize(40);      // 40 connections ready
+            config.setMinimumIdle(10);           // Keep 10 always open
             config.setConnectionTimeout(30000); // 30 second timeout
             config.setIdleTimeout(600000);      // 10 minutes idle timeout
             config.setMaxLifetime(1800000);     // 30 minutes max lifetime

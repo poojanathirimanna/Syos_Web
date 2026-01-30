@@ -1,8 +1,9 @@
 package com.syos.web.domain.model;
 
 import com.syos.web.domain.enums.ProductStatus;
-
 import java.math.BigDecimal;
+import java.math.RoundingMode;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
 
 /**
@@ -14,7 +15,13 @@ public class Product {
     private String name;
     private BigDecimal unitPrice;
     private String imageUrl;
-    private Integer categoryId;  // 🆕 NEW - Category association
+    private Integer categoryId;
+
+    // 🆕 NEW - Discount fields
+    private BigDecimal discountPercentage;
+    private LocalDate discountStartDate;
+    private LocalDate discountEndDate;
+
     private int shelfQuantity;
     private int warehouseQuantity;
     private int websiteQuantity;
@@ -24,6 +31,7 @@ public class Product {
 
     // Default constructor
     public Product() {
+        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -34,7 +42,10 @@ public class Product {
         this.name = name;
         this.unitPrice = unitPrice;
         this.imageUrl = null;
-        this.categoryId = null;  // 🆕 NEW
+        this.categoryId = null;
+        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW
+        this.discountStartDate = null;              // 🆕 NEW
+        this.discountEndDate = null;                // 🆕 NEW
         this.shelfQuantity = 0;
         this.warehouseQuantity = 0;
         this.websiteQuantity = 0;
@@ -43,20 +54,56 @@ public class Product {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // Full constructor with image and category
+    // Full constructor
     public Product(String productCode, String name, BigDecimal unitPrice, String imageUrl,
                    Integer categoryId, int shelfQuantity, int warehouseQuantity, int websiteQuantity) {
         this.productCode = productCode;
         this.name = name;
         this.unitPrice = unitPrice;
         this.imageUrl = imageUrl;
-        this.categoryId = categoryId;  // 🆕 NEW
+        this.categoryId = categoryId;
+        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW
+        this.discountStartDate = null;              // 🆕 NEW
+        this.discountEndDate = null;                // 🆕 NEW
         this.shelfQuantity = shelfQuantity;
         this.warehouseQuantity = warehouseQuantity;
         this.websiteQuantity = websiteQuantity;
         this.status = calculateStatus();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+    }
+
+    // 🆕 NEW - Check if product has active discount
+    public boolean hasActiveDiscount() {
+        if (discountPercentage == null || discountPercentage.compareTo(BigDecimal.ZERO) == 0) {
+            return false;
+        }
+
+        LocalDate today = LocalDate.now();
+
+        // No date restrictions - always active
+        if (discountStartDate == null && discountEndDate == null) {
+            return true;
+        }
+
+        // Check if today is within discount period
+        boolean afterStart = (discountStartDate == null || !today.isBefore(discountStartDate));
+        boolean beforeEnd = (discountEndDate == null || !today.isAfter(discountEndDate));
+
+        return afterStart && beforeEnd;
+    }
+
+    // 🆕 NEW - Calculate discounted price
+    public BigDecimal getDiscountedPrice() {
+        if (!hasActiveDiscount()) {
+            return unitPrice;
+        }
+
+        BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                discountPercentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP)
+        );
+
+        return unitPrice.multiply(discountMultiplier).setScale(2, RoundingMode.HALF_UP);
     }
 
     // Business logic: Calculate product status based on inventory
@@ -89,9 +136,16 @@ public class Product {
         if (shelfQuantity < 0 || warehouseQuantity < 0 || websiteQuantity < 0) {
             throw new IllegalArgumentException("Quantities cannot be negative");
         }
-        // categoryId is optional, but if provided, must be positive
         if (categoryId != null && categoryId <= 0) {
             throw new IllegalArgumentException("Invalid category ID");
+        }
+        // 🆕 NEW - Validate discount
+        if (discountPercentage != null && (discountPercentage.compareTo(BigDecimal.ZERO) < 0 ||
+                discountPercentage.compareTo(new BigDecimal("100")) > 0)) {
+            throw new IllegalArgumentException("Discount percentage must be between 0 and 100");
+        }
+        if (discountStartDate != null && discountEndDate != null && discountEndDate.isBefore(discountStartDate)) {
+            throw new IllegalArgumentException("Discount end date must be after start date");
         }
     }
 
@@ -129,13 +183,40 @@ public class Product {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 🆕 NEW - Category getters and setters
     public Integer getCategoryId() {
         return categoryId;
     }
 
     public void setCategoryId(Integer categoryId) {
         this.categoryId = categoryId;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    // 🆕 NEW - Discount getters and setters
+    public BigDecimal getDiscountPercentage() {
+        return discountPercentage;
+    }
+
+    public void setDiscountPercentage(BigDecimal discountPercentage) {
+        this.discountPercentage = discountPercentage;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public LocalDate getDiscountStartDate() {
+        return discountStartDate;
+    }
+
+    public void setDiscountStartDate(LocalDate discountStartDate) {
+        this.discountStartDate = discountStartDate;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public LocalDate getDiscountEndDate() {
+        return discountEndDate;
+    }
+
+    public void setDiscountEndDate(LocalDate discountEndDate) {
+        this.discountEndDate = discountEndDate;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -198,6 +279,7 @@ public class Product {
                 "productCode='" + productCode + '\'' +
                 ", name='" + name + '\'' +
                 ", unitPrice=" + unitPrice +
+                ", discountPercentage=" + discountPercentage +
                 ", imageUrl='" + imageUrl + '\'' +
                 ", categoryId=" + categoryId +
                 ", shelfQuantity=" + shelfQuantity +

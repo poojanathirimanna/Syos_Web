@@ -1,8 +1,8 @@
 package com.syos.web.application.dto;
 
 import com.syos.web.domain.enums.ProductStatus;
-
 import java.math.BigDecimal;
+import java.time.LocalDate;
 
 /**
  * DTO for Product data transfer between layers
@@ -13,8 +13,14 @@ public class ProductDTO {
     private String name;
     private BigDecimal unitPrice;
     private String imageUrl;
-    private Integer categoryId;      // 🆕 NEW - Category ID
-    private String categoryName;     // 🆕 NEW - Category name for display
+    private Integer categoryId;
+    private String categoryName;
+
+    // 🆕 NEW - Discount fields
+    private BigDecimal discountPercentage;
+    private LocalDate discountStartDate;
+    private LocalDate discountEndDate;
+
     private int shelfQuantity;
     private int warehouseQuantity;
     private int websiteQuantity;
@@ -26,7 +32,7 @@ public class ProductDTO {
     public ProductDTO() {
     }
 
-    // Constructor with all fields including image and category
+    // Constructor with all fields
     public ProductDTO(String productCode, String name, BigDecimal unitPrice, String imageUrl,
                       Integer categoryId, String categoryName, int shelfQuantity, int warehouseQuantity,
                       int websiteQuantity, ProductStatus status) {
@@ -34,8 +40,9 @@ public class ProductDTO {
         this.name = name;
         this.unitPrice = unitPrice;
         this.imageUrl = imageUrl;
-        this.categoryId = categoryId;         // 🆕 NEW
-        this.categoryName = categoryName;     // 🆕 NEW
+        this.categoryId = categoryId;
+        this.categoryName = categoryName;
+        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW - Default
         this.shelfQuantity = shelfQuantity;
         this.warehouseQuantity = warehouseQuantity;
         this.websiteQuantity = websiteQuantity;
@@ -77,7 +84,6 @@ public class ProductDTO {
         this.imageUrl = imageUrl;
     }
 
-    // 🆕 NEW - Category getters and setters
     public Integer getCategoryId() {
         return categoryId;
     }
@@ -92,6 +98,31 @@ public class ProductDTO {
 
     public void setCategoryName(String categoryName) {
         this.categoryName = categoryName;
+    }
+
+    // 🆕 NEW - Discount getters and setters
+    public BigDecimal getDiscountPercentage() {
+        return discountPercentage;
+    }
+
+    public void setDiscountPercentage(BigDecimal discountPercentage) {
+        this.discountPercentage = discountPercentage;
+    }
+
+    public LocalDate getDiscountStartDate() {
+        return discountStartDate;
+    }
+
+    public void setDiscountStartDate(LocalDate discountStartDate) {
+        this.discountStartDate = discountStartDate;
+    }
+
+    public LocalDate getDiscountEndDate() {
+        return discountEndDate;
+    }
+
+    public void setDiscountEndDate(LocalDate discountEndDate) {
+        this.discountEndDate = discountEndDate;
     }
 
     public int getShelfQuantity() {

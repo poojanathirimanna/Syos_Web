@@ -6,6 +6,7 @@ import com.syos.web.domain.model.Product;
 
 import java.math.BigDecimal;
 import java.sql.*;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
@@ -25,17 +26,20 @@ public class ProductDao {
                 "    p.product_code, " +
                 "    p.name, " +
                 "    p.unit_price, " +
+                "    p.discount_percentage, " +  // 🆕 NEW
+                "    p.discount_start_date, " +   // 🆕 NEW
+                "    p.discount_end_date, " +     // 🆕 NEW
                 "    p.image_url, " +
-                "    p.category_id, " +  // 🆕 NEW
-                "    pc.category_name, " +  // 🆕 NEW
+                "    p.category_id, " +
+                "    pc.category_name, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
+                "GROUP BY p.product_code, p.name, p.unit_price, p.discount_percentage, p.discount_start_date, p.discount_end_date, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
                 "ORDER BY p.product_code";
 
         try (Connection conn = Db.getConnection();
@@ -58,17 +62,20 @@ public class ProductDao {
                 "    p.product_code, " +
                 "    p.name, " +
                 "    p.unit_price, " +
+                "    p.discount_percentage, " +  // 🆕 NEW
+                "    p.discount_start_date, " +   // 🆕 NEW
+                "    p.discount_end_date, " +     // 🆕 NEW
                 "    p.image_url, " +
-                "    p.category_id, " +  // 🆕 NEW
-                "    pc.category_name, " +  // 🆕 NEW
+                "    p.category_id, " +
+                "    pc.category_name, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.product_code = ? AND p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name";  // 🆕 UPDATED
+                "GROUP BY p.product_code, p.name, p.unit_price, p.discount_percentage, p.discount_start_date, p.discount_end_date, p.image_url, p.category_id, pc.category_name";  // 🆕 UPDATED
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -106,7 +113,7 @@ public class ProductDao {
      * Insert new product
      */
     public Product save(Product product) throws SQLException {
-        String sql = "INSERT INTO products (product_code, name, unit_price, image_url, category_id, is_deleted) VALUES (?, ?, ?, ?, ?, FALSE)";  // 🆕 UPDATED
+        String sql = "INSERT INTO products (product_code, name, unit_price, image_url, category_id, is_deleted) VALUES (?, ?, ?, ?, ?, FALSE)";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -116,7 +123,6 @@ public class ProductDao {
             stmt.setBigDecimal(3, product.getUnitPrice());
             stmt.setString(4, product.getImageUrl());
 
-            // 🆕 NEW - Handle category_id (can be null)
             if (product.getCategoryId() != null) {
                 stmt.setInt(5, product.getCategoryId());
             } else {
@@ -135,7 +141,7 @@ public class ProductDao {
      * Update existing product
      */
     public Product update(Product product) throws SQLException {
-        String sql = "UPDATE products SET name = ?, unit_price = ?, image_url = ?, category_id = ? WHERE product_code = ? AND is_deleted = FALSE";  // 🆕 UPDATED
+        String sql = "UPDATE products SET name = ?, unit_price = ?, image_url = ?, category_id = ? WHERE product_code = ? AND is_deleted = FALSE";
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql)) {
@@ -144,7 +150,6 @@ public class ProductDao {
             stmt.setBigDecimal(2, product.getUnitPrice());
             stmt.setString(3, product.getImageUrl());
 
-            // 🆕 NEW - Handle category_id (can be null)
             if (product.getCategoryId() != null) {
                 stmt.setInt(4, product.getCategoryId());
             } else {
@@ -176,6 +181,32 @@ public class ProductDao {
         }
     }
 
+    // 🆕 NEW - Set product discount
+    public boolean setProductDiscount(String productCode, BigDecimal discountPercentage,
+                                      LocalDate startDate, LocalDate endDate) throws SQLException {
+        String sql = "UPDATE products SET discount_percentage = ?, " +
+                "discount_start_date = ?, discount_end_date = ?, " +
+                "updated_at = CURRENT_TIMESTAMP " +
+                "WHERE product_code = ? AND is_deleted = FALSE";
+
+        try (Connection conn = Db.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setBigDecimal(1, discountPercentage);
+            stmt.setDate(2, startDate != null ? Date.valueOf(startDate) : null);
+            stmt.setDate(3, endDate != null ? Date.valueOf(endDate) : null);
+            stmt.setString(4, productCode);
+
+            int rowsAffected = stmt.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
+
+    // 🆕 NEW - Remove product discount
+    public boolean removeProductDiscount(String productCode) throws SQLException {
+        return setProductDiscount(productCode, BigDecimal.ZERO, null, null);
+    }
+
     /**
      * Find products with low stock
      */
@@ -185,17 +216,20 @@ public class ProductDao {
                 "    p.product_code, " +
                 "    p.name, " +
                 "    p.unit_price, " +
+                "    p.discount_percentage, " +  // 🆕 NEW
+                "    p.discount_start_date, " +   // 🆕 NEW
+                "    p.discount_end_date, " +     // 🆕 NEW
                 "    p.image_url, " +
-                "    p.category_id, " +  // 🆕 NEW
-                "    pc.category_name, " +  // 🆕 NEW
+                "    p.category_id, " +
+                "    pc.category_name, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
+                "GROUP BY p.product_code, p.name, p.unit_price, p.discount_percentage, p.discount_start_date, p.discount_end_date, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
                 "HAVING warehouse_quantity < ? " +
                 "ORDER BY warehouse_quantity ASC";
 
@@ -221,17 +255,20 @@ public class ProductDao {
                 "    p.product_code, " +
                 "    p.name, " +
                 "    p.unit_price, " +
+                "    p.discount_percentage, " +  // 🆕 NEW
+                "    p.discount_start_date, " +   // 🆕 NEW
+                "    p.discount_end_date, " +     // 🆕 NEW
                 "    p.image_url, " +
-                "    p.category_id, " +  // 🆕 NEW
-                "    pc.category_name, " +  // 🆕 NEW
+                "    p.category_id, " +
+                "    pc.category_name, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
                 "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
                 "FROM products p " +
-                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +  // 🆕 NEW
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +
                 "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
+                "GROUP BY p.product_code, p.name, p.unit_price, p.discount_percentage, p.discount_start_date, p.discount_end_date, p.image_url, p.category_id, pc.category_name " +  // 🆕 UPDATED
                 "HAVING (shelf_quantity + warehouse_quantity) = 0 " +
                 "ORDER BY p.product_code";
 
@@ -270,14 +307,25 @@ public class ProductDao {
         String productCode = rs.getString("product_code");
         String name = rs.getString("name");
         BigDecimal unitPrice = rs.getBigDecimal("unit_price");
+
+        // 🆕 NEW - Map discount fields
+        BigDecimal discountPercentage = rs.getBigDecimal("discount_percentage");
+        Date startDate = rs.getDate("discount_start_date");
+        Date endDate = rs.getDate("discount_end_date");
+
         String imageUrl = rs.getString("image_url");
-        Integer categoryId = (Integer) rs.getObject("category_id");  // 🆕 NEW - Can be null
+        Integer categoryId = (Integer) rs.getObject("category_id");
         int shelfQuantity = rs.getInt("shelf_quantity");
         int warehouseQuantity = rs.getInt("warehouse_quantity");
         int websiteQuantity = rs.getInt("website_quantity");
 
         Product product = new Product(productCode, name, unitPrice, imageUrl,
-                categoryId, shelfQuantity, warehouseQuantity, websiteQuantity);  // 🆕 UPDATED
+                categoryId, shelfQuantity, warehouseQuantity, websiteQuantity);
+
+        // 🆕 NEW - Set discount fields
+        product.setDiscountPercentage(discountPercentage != null ? discountPercentage : BigDecimal.ZERO);
+        product.setDiscountStartDate(startDate != null ? startDate.toLocalDate() : null);
+        product.setDiscountEndDate(endDate != null ? endDate.toLocalDate() : null);
 
         // Calculate and set status
         product.setStatus(product.calculateStatus());

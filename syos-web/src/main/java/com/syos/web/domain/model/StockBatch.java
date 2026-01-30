@@ -1,6 +1,7 @@
 package com.syos.web.domain.model;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.time.LocalDate;
 
 /**
@@ -13,12 +14,19 @@ public class StockBatch {
     private LocalDate purchaseDate;
     private LocalDate expiryDate;
     private int availableQuantity;
+
+    // 🆕 UPDATED - Discount fields for batch-level discounts
     private BigDecimal discountPercentage;
+    private LocalDate discountStartDate;  // 🆕 NEW
+    private LocalDate discountEndDate;    // 🆕 NEW
+
     private int version;  // For optimistic locking
 
     // Default constructor
     public StockBatch() {
         this.discountPercentage = BigDecimal.ZERO;
+        this.discountStartDate = null;  // 🆕 NEW
+        this.discountEndDate = null;    // 🆕 NEW
         this.version = 0;
     }
 
@@ -29,6 +37,8 @@ public class StockBatch {
         this.expiryDate = expiryDate;
         this.availableQuantity = availableQuantity;
         this.discountPercentage = BigDecimal.ZERO;
+        this.discountStartDate = null;  // 🆕 NEW
+        this.discountEndDate = null;    // 🆕 NEW
         this.version = 0;
     }
 
@@ -41,7 +51,42 @@ public class StockBatch {
         this.expiryDate = expiryDate;
         this.availableQuantity = availableQuantity;
         this.discountPercentage = discountPercentage;
+        this.discountStartDate = null;  // 🆕 NEW
+        this.discountEndDate = null;    // 🆕 NEW
         this.version = version;
+    }
+
+    // 🆕 NEW - Check if batch has active discount
+    public boolean hasBatchDiscount() {
+        if (discountPercentage == null || discountPercentage.compareTo(BigDecimal.ZERO) == 0) {
+            return false;
+        }
+
+        LocalDate today = LocalDate.now();
+
+        // No date restrictions - always active
+        if (discountStartDate == null && discountEndDate == null) {
+            return true;
+        }
+
+        // Check if today is within discount period
+        boolean afterStart = (discountStartDate == null || !today.isBefore(discountStartDate));
+        boolean beforeEnd = (discountEndDate == null || !today.isAfter(discountEndDate));
+
+        return afterStart && beforeEnd;
+    }
+
+    // 🆕 NEW - Calculate batch discounted price (requires base price)
+    public BigDecimal getBatchDiscountedPrice(BigDecimal basePrice) {
+        if (!hasBatchDiscount()) {
+            return basePrice;
+        }
+
+        BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                discountPercentage.divide(new BigDecimal("100"), 4, RoundingMode.HALF_UP)
+        );
+
+        return basePrice.multiply(discountMultiplier).setScale(2, RoundingMode.HALF_UP);
     }
 
     // Business logic: Check if batch is expired
@@ -86,6 +131,10 @@ public class StockBatch {
         if (discountPercentage != null && (discountPercentage.compareTo(BigDecimal.ZERO) < 0 ||
                 discountPercentage.compareTo(new BigDecimal("100")) > 0)) {
             throw new IllegalArgumentException("Discount percentage must be between 0 and 100");
+        }
+        // 🆕 NEW - Validate discount dates
+        if (discountStartDate != null && discountEndDate != null && discountEndDate.isBefore(discountStartDate)) {
+            throw new IllegalArgumentException("Discount end date must be after start date");
         }
     }
 
@@ -138,6 +187,23 @@ public class StockBatch {
         this.discountPercentage = discountPercentage;
     }
 
+    // 🆕 NEW - Discount date getters and setters
+    public LocalDate getDiscountStartDate() {
+        return discountStartDate;
+    }
+
+    public void setDiscountStartDate(LocalDate discountStartDate) {
+        this.discountStartDate = discountStartDate;
+    }
+
+    public LocalDate getDiscountEndDate() {
+        return discountEndDate;
+    }
+
+    public void setDiscountEndDate(LocalDate discountEndDate) {
+        this.discountEndDate = discountEndDate;
+    }
+
     public int getVersion() {
         return version;
     }
@@ -154,6 +220,7 @@ public class StockBatch {
                 ", purchaseDate=" + purchaseDate +
                 ", expiryDate=" + expiryDate +
                 ", availableQuantity=" + availableQuantity +
+                ", discountPercentage=" + discountPercentage +
                 ", version=" + version +
                 '}';
     }

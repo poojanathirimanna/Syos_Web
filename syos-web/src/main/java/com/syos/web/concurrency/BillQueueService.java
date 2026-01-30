@@ -33,7 +33,7 @@ public class BillQueueService {
 
     public static synchronized BillQueueService getInstance() {
         if (instance == null) {
-            instance = new BillQueueService(500, 10);
+            instance = new BillQueueService(1000, 20);
             // Queue size: 500 requests
             // Workers: 10 threads
         }
