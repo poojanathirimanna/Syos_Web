@@ -6,6 +6,8 @@ import com.syos.web.application.dto.BillDTO;
 import com.syos.web.application.dto.CreateBillRequest;
 import com.syos.web.application.usecases.CreateBillUseCase;
 import com.syos.web.concurrency.RequestLogger;
+import com.syos.web.concurrency.BillQueueService;
+import com.syos.web.concurrency.BillQueueResponse;
 import com.syos.web.infrastructure.persistence.dao.BillDao;
 import com.syos.web.infrastructure.persistence.dao.ProductDao;
 import com.syos.web.presentation.util.GsonConfig;
@@ -18,10 +20,14 @@ import jakarta.servlet.http.HttpSession;
 import java.io.BufferedReader;
 import java.io.IOException;
 import java.util.List;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
+import java.util.concurrent.ExecutionException;
 
 /**
  * Bills Servlet - For Cashiers
- * POST /api/cashier/bills        → Create bill
+ * POST /api/cashier/bills        → Create bill (WITH QUEUE!)
  * GET  /api/cashier/bills        → Get cashier's own bills
  * GET  /api/cashier/bills/{id}   → Get bill details
  */
@@ -38,11 +44,13 @@ public class ApiBillsServlet extends HttpServlet {
         ProductDao productDao = new ProductDao();
         this.createBillUseCase = new CreateBillUseCase(billDao, productDao);
 
+        BillQueueService.getInstance();  // Forces initialization
+
         System.out.println("✅ ApiBillsServlet (Cashier) initialized");
     }
 
     // ===================================================================
-    // POST - Create bill
+    // POST - Create bill (WITH QUEUE!)
     // ===================================================================
     @Override
     protected void doPost(HttpServletRequest req, HttpServletResponse resp) throws IOException {
@@ -72,18 +80,53 @@ public class ApiBillsServlet extends HttpServlet {
             String requestBody = readRequestBody(req);
             CreateBillRequest request = gson.fromJson(requestBody, CreateBillRequest.class);
 
-            // Execute use case
-            BillDTO billDTO = createBillUseCase.execute(request, userId);
+            System.out.println("📨 [" + Thread.currentThread().getName() + "] Submitting bill request to queue...");
 
-            // Success response
-            ApiResponse<BillDTO> response = ApiResponse.success(
-                    "Bill created successfully",
-                    billDTO
-            );
+            // 🆕 SUBMIT TO QUEUE (instead of direct execution!)
+            CompletableFuture<BillQueueResponse> future =
+                    BillQueueService.getInstance().submitBillRequest(request, userId);
 
-            RequestLogger.updateStatus(requestId, "COMPLETED", startTime);
-            resp.setStatus(HttpServletResponse.SC_CREATED);
-            resp.getWriter().write(gson.toJson(response));
+            // Wait for result with timeout (30 seconds)
+            BillQueueResponse queueResponse = future.get(30, TimeUnit.SECONDS);
+
+            if (queueResponse.isSuccess()) {
+                // Success response
+                ApiResponse<BillDTO> response = ApiResponse.success(
+                        queueResponse.getMessage(),
+                        queueResponse.getBillDTO()
+                );
+
+                RequestLogger.updateStatus(requestId, "COMPLETED", startTime);
+
+                System.out.println("✅ [" + Thread.currentThread().getName() + "] Bill created successfully in " +
+                        queueResponse.getProcessingTimeMs() + "ms");
+
+                resp.setStatus(HttpServletResponse.SC_CREATED);
+                resp.getWriter().write(gson.toJson(response));
+            } else {
+                // Queue processing failed
+                RequestLogger.logError(requestId, queueResponse.getErrorMessage());
+                ApiResponse<Object> errorResponse = ApiResponse.error(queueResponse.getErrorMessage());
+                resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
+                resp.getWriter().write(gson.toJson(errorResponse));
+            }
+
+        } catch (TimeoutException e) {
+            // Request took too long (> 30 seconds)
+            RequestLogger.logError(requestId, "Request timeout: " + e.getMessage());
+            ApiResponse<Object> errorResponse = ApiResponse.error("Request processing timeout. Server is busy, please try again.");
+            resp.setStatus(HttpServletResponse.SC_REQUEST_TIMEOUT);
+            resp.getWriter().write(gson.toJson(errorResponse));
+            System.err.println("⏱️ [" + Thread.currentThread().getName() + "] Request timeout: " + requestId);
+
+        } catch (ExecutionException e) {
+            // Processing error in worker thread
+            RequestLogger.logError(requestId, "Processing error: " + e.getCause().getMessage());
+            ApiResponse<Object> errorResponse = ApiResponse.error("Failed to create bill: " + e.getCause().getMessage());
+            resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+            resp.getWriter().write(gson.toJson(errorResponse));
+            System.err.println("❌ [" + Thread.currentThread().getName() + "] Processing error: " + e.getCause().getMessage());
+            e.printStackTrace();
 
         } catch (IllegalArgumentException e) {
             RequestLogger.logError(requestId, e.getMessage());
@@ -135,9 +178,9 @@ public class ApiBillsServlet extends HttpServlet {
                 resp.getWriter().write(gson.toJson(response));
 
             } else {
-                // Get single bill by bill_number (not ID!)
-                String billNumber = pathInfo.substring(1);  // ✅ Changed from Long to String
-                BillDTO bill = billDao.getBillByNumber(billNumber);  // ✅ Correct method name
+                // Get single bill by bill_number
+                String billNumber = pathInfo.substring(1);
+                BillDTO bill = billDao.getBillByNumber(billNumber);
 
                 if (bill == null) {
                     ApiResponse<Object> error = ApiResponse.error("Bill not found");
