@@ -10,6 +10,7 @@ import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
+import com.syos.web.application.dto.PromotionDTO;
 
 /**
  * Data Access Object for Product
@@ -331,5 +332,55 @@ public class ProductDao {
         product.setStatus(product.calculateStatus());
 
         return product;
+    }
+
+    /**
+     * 🆕 NEW - Get all products with active discounts
+     */
+    public List<PromotionDTO> getAllActiveProductDiscounts() throws SQLException {
+        List<PromotionDTO> promotions = new ArrayList<>();
+        String sql = "SELECT p.product_code, p.name, p.unit_price, " +
+                "p.discount_percentage, p.discount_start_date, p.discount_end_date " +
+                "FROM products p " +
+                "WHERE p.is_deleted = FALSE " +
+                "AND p.discount_percentage > 0 " +
+                "AND (p.discount_start_date IS NULL OR p.discount_start_date <= CURDATE()) " +
+                "AND (p.discount_end_date IS NULL OR p.discount_end_date >= CURDATE()) " +
+                "ORDER BY p.discount_percentage DESC";
+
+        try (Connection conn = Db.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql);
+             ResultSet rs = stmt.executeQuery()) {
+
+            while (rs.next()) {
+                String productCode = rs.getString("product_code");
+                String productName = rs.getString("name");
+                BigDecimal originalPrice = rs.getBigDecimal("unit_price");
+                BigDecimal discountPercentage = rs.getBigDecimal("discount_percentage");
+
+                Date startDate = rs.getDate("discount_start_date");
+                Date endDate = rs.getDate("discount_end_date");
+
+                // Calculate discounted price
+                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                        discountPercentage.divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP)
+                );
+                BigDecimal discountedPrice = originalPrice.multiply(discountMultiplier)
+                        .setScale(2, java.math.RoundingMode.HALF_UP);
+
+                PromotionDTO promotion = new PromotionDTO(
+                        productCode,
+                        productName,
+                        originalPrice,
+                        discountedPrice,
+                        discountPercentage,
+                        startDate != null ? startDate.toLocalDate() : null,
+                        endDate != null ? endDate.toLocalDate() : null
+                );
+
+                promotions.add(promotion);
+            }
+        }
+        return promotions;
     }
 }

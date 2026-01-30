@@ -25,12 +25,16 @@ public class GsonConfig {
 
     static {
         GSON = new GsonBuilder()
+                // 🆕 IMPORTANT - Make fields accessible
+                .excludeFieldsWithModifiers(java.lang.reflect.Modifier.TRANSIENT)
                 // LocalDate support
-                .registerTypeAdapter(LocalDate.class, new LocalDateSerializer())
-                .registerTypeAdapter(LocalDate.class, new LocalDateDeserializer())
-                // LocalDateTime support (NEW!)
-                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeSerializer())
-                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeDeserializer())
+                .registerTypeAdapter(LocalDate.class, new LocalDateAdapter())
+                // LocalDateTime support
+                .registerTypeAdapter(LocalDateTime.class, new LocalDateTimeAdapter())
+                // 🆕 IMPORTANT - Be lenient with malformed JSON
+                .setLenient()
+                // 🆕 IMPORTANT - Don't fail on missing fields
+                .serializeNulls()
                 .create();
     }
 
@@ -39,62 +43,66 @@ public class GsonConfig {
     }
 
     /* ==========================================
-       LocalDate Serializers/Deserializers
+       LocalDate Adapter (Serializer + Deserializer)
        ========================================== */
 
     /**
-     * Custom serializer for LocalDate (to JSON)
+     * Custom adapter for LocalDate (handles both serialization and deserialization)
      */
-    private static class LocalDateSerializer implements JsonSerializer<LocalDate> {
+    private static class LocalDateAdapter implements JsonSerializer<LocalDate>, JsonDeserializer<LocalDate> {
         private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
 
         @Override
         public JsonElement serialize(LocalDate localDate, Type type, JsonSerializationContext context) {
+            if (localDate == null) {
+                return null;
+            }
             return new JsonPrimitive(localDate.format(formatter));
         }
-    }
-
-    /**
-     * Custom deserializer for LocalDate (from JSON)
-     */
-    private static class LocalDateDeserializer implements JsonDeserializer<LocalDate> {
-        private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE;
 
         @Override
         public LocalDate deserialize(JsonElement json, Type type, JsonDeserializationContext context)
                 throws JsonParseException {
-            return LocalDate.parse(json.getAsString(), formatter);
+            if (json == null || json.isJsonNull()) {
+                return null;
+            }
+            try {
+                return LocalDate.parse(json.getAsString(), formatter);
+            } catch (Exception e) {
+                throw new JsonParseException("Failed to parse LocalDate: " + json.getAsString(), e);
+            }
         }
     }
 
     /* ==========================================
-       LocalDateTime Serializers/Deserializers
+       LocalDateTime Adapter (Serializer + Deserializer)
        ========================================== */
 
     /**
-     * Custom serializer for LocalDateTime (to JSON)
-     * Format: "2026-01-27T15:30:45"
+     * Custom adapter for LocalDateTime (handles both serialization and deserialization)
      */
-    private static class LocalDateTimeSerializer implements JsonSerializer<LocalDateTime> {
+    private static class LocalDateTimeAdapter implements JsonSerializer<LocalDateTime>, JsonDeserializer<LocalDateTime> {
         private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
         @Override
         public JsonElement serialize(LocalDateTime localDateTime, Type type, JsonSerializationContext context) {
+            if (localDateTime == null) {
+                return null;
+            }
             return new JsonPrimitive(localDateTime.format(formatter));
         }
-    }
-
-    /**
-     * Custom deserializer for LocalDateTime (from JSON)
-     * Accepts: "2026-01-27T15:30:45"
-     */
-    private static class LocalDateTimeDeserializer implements JsonDeserializer<LocalDateTime> {
-        private static final DateTimeFormatter formatter = DateTimeFormatter.ISO_LOCAL_DATE_TIME;
 
         @Override
         public LocalDateTime deserialize(JsonElement json, Type type, JsonDeserializationContext context)
                 throws JsonParseException {
-            return LocalDateTime.parse(json.getAsString(), formatter);
+            if (json == null || json.isJsonNull()) {
+                return null;
+            }
+            try {
+                return LocalDateTime.parse(json.getAsString(), formatter);
+            } catch (Exception e) {
+                throw new JsonParseException("Failed to parse LocalDateTime: " + json.getAsString(), e);
+            }
         }
     }
 }

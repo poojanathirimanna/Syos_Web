@@ -6,6 +6,7 @@ import com.syos.web.application.ports.IProductRepository;
 import com.syos.web.application.usecases.*;
 import com.syos.web.concurrency.RequestLogger;
 import com.syos.web.infrastructure.repositories.ProductRepositoryImpl;
+import com.syos.web.presentation.util.GsonConfig;  // 🆕 ADD THIS IMPORT
 import jakarta.servlet.ServletException;
 import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
@@ -30,7 +31,8 @@ import java.io.BufferedReader;
 @WebServlet("/api/admin/products/*")
 public class ApiProductsServlet extends HttpServlet {
 
-    private final Gson gson = new Gson();
+    // 🆕 FIXED - Use configured Gson instead of new Gson()
+    private final Gson gson = GsonConfig.getGson();
 
     // Use Cases
     private ProductCatalogUseCase productCatalogUseCase;
