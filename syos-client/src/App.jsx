@@ -3,6 +3,8 @@ import Login from "./pages/Login.jsx";
 import Home from "./pages/Home.jsx";
 import Register from "./pages/Register.jsx";
 import ProtectedRoute from "./pages/ProtectedRoute.jsx";
+import AdminDashboard from "./pages/AdminDashboard";
+import CashierDashboard from "./pages/CashierDashboard";
 
 export default function App() {
     return (
@@ -25,6 +27,25 @@ export default function App() {
             <Route path="/admin/dashboard" element={<Navigate to="/home" replace />} />
             <Route path="/cashier/dashboard" element={<Navigate to="/home" replace />} />
             <Route path="/customer/dashboard" element={<Navigate to="/home" replace />} />
+
+            {/* Direct routes to specific dashboard tabs */}
+            <Route
+                path="/admin/discounts"
+                element={
+                    <ProtectedRoute>
+                        <AdminDashboard initialMenu="discounts" />
+                    </ProtectedRoute>
+                }
+            />
+
+            <Route
+                path="/cashier/promotions"
+                element={
+                    <ProtectedRoute>
+                        <CashierDashboard initialMenu="promotions" />
+                    </ProtectedRoute>
+                }
+            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/login" />} />

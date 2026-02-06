@@ -367,3 +367,85 @@ export async function apiCreateBill(billData) {
 
     return await parseJsonSafe(res);
 }
+
+/* =========================
+   DISCOUNT & PROMOTIONS APIs
+   ========================= */
+
+// SET PRODUCT DISCOUNT
+export async function apiSetProductDiscount(discountData) {
+    const res = await fetch(`${BASE_URL}/api/admin/products/discount`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(discountData),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// REMOVE PRODUCT DISCOUNT
+export async function apiRemoveProductDiscount(productCode) {
+    const res = await fetch(`${BASE_URL}/api/admin/products/discount/${productCode}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// SET BATCH DISCOUNT
+export async function apiSetBatchDiscount(discountData) {
+    const res = await fetch(`${BASE_URL}/api/admin/batches/discount`, {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        credentials: "include",
+        body: JSON.stringify(discountData),
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// REMOVE BATCH DISCOUNT
+export async function apiRemoveBatchDiscount(batchId) {
+    const res = await fetch(`${BASE_URL}/api/admin/batches/discount/${batchId}`, {
+        method: "DELETE",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GET CASHIER PROMOTIONS (Active discounts for cashiers to view)
+export async function apiGetCashierPromotions() {
+    const res = await fetch(`${BASE_URL}/api/admin/cashier/promotions`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GET ALL PRODUCTS WITH DISCOUNTS (For discount management)
+export async function apiGetProductsWithDiscounts() {
+    const res = await fetch(`${BASE_URL}/api/admin/products/discounts`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}
+
+// GET PRODUCT BATCHES (For batch discount management)
+export async function apiGetProductBatches(productCode) {
+    const res = await fetch(`${BASE_URL}/api/admin/batches?productCode=${productCode}`, {
+        method: "GET",
+        credentials: "include",
+    });
+
+    return await parseJsonSafe(res);
+}

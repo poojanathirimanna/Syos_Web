@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/common/Sidebar";
 import Header from "../components/common/Header";
 import StatCard from "../components/dashboard/StatCard";
@@ -9,14 +10,17 @@ import InventoryManagement from "../components/dashboard/InventoryManagement";
 import CashierManagement from "../components/dashboard/CashierManagement";
 import ReportsManagement from "../components/dashboard/ReportsManagement";
 import OrdersManagement from "../components/dashboard/OrdersManagement";
+import DiscountsManagement from "./DiscountsManagement";
 import syosLogo from "../assets/syos-logo-text.png";
 
-export default function AdminDashboard({ user, onLogout }) {
+export default function AdminDashboard({ user, onLogout, initialMenu }) {
     console.log("🎯 AdminDashboard props:", { user: user?.username, onLogout: typeof onLogout });
 
-    const [activeMenu, setActiveMenu] = useState("dashboard");
+    const [activeMenu, setActiveMenu] = useState(initialMenu || "dashboard");
     const [sidebarOpen, setSidebarOpen] = useState(true);
     const [expandedMenus, setExpandedMenus] = useState(["product-management"]);
+
+    const navigate = useNavigate();
 
     const menuItems = [
         { id: "dashboard", icon: "📊", label: "Dashboard" },
@@ -31,11 +35,19 @@ export default function AdminDashboard({ user, onLogout }) {
         },
         { id: "inventory", icon: "📋", label: "Inventory" },
         { id: "orders", icon: "🛒", label: "Orders" },
+        { id: "discounts", icon: "🏷️", label: "Discounts" },
         { id: "reports", icon: "📈", label: "Reports" },
         { id: "cashiers", icon: "👤", label: "Cashiers" },
     ];
 
     const handleMenuClick = (id) => {
+        // If clicking discounts, navigate to a direct route for shareable URL
+        if (id === 'discounts') {
+            setActiveMenu('discounts');
+            navigate('/admin/discounts');
+            return;
+        }
+
         // Check if it's a parent menu with submenu
         const menuItem = menuItems.find(item => item.id === id);
         if (menuItem && menuItem.submenu) {
@@ -282,11 +294,15 @@ export default function AdminDashboard({ user, onLogout }) {
                             <OrdersManagement />
                         )}
 
+                        {activeMenu === "discounts" && (
+                            <DiscountsManagement />
+                        )}
+
                         {activeMenu === "reports" && (
                             <ReportsManagement />
                         )}
 
-                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && activeMenu !== "cashiers" && activeMenu !== "orders" && activeMenu !== "reports" && (
+                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && activeMenu !== "cashiers" && activeMenu !== "orders" && activeMenu !== "discounts" && activeMenu !== "reports" && (
                             <div>
                                 <h1 className="section-title">
                                     {menuItems.find(m => m.id === activeMenu)?.label}
