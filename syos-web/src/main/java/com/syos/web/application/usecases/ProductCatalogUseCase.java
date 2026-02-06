@@ -44,17 +44,24 @@ public class ProductCatalogUseCase {
      * @return ProductDTO for API response
      */
     private ProductDTO convertToDTO(Product product) {
-        return new ProductDTO(
+        ProductDTO dto = new ProductDTO(
                 product.getProductCode(),
                 product.getName(),
                 product.getUnitPrice(),
                 product.getImageUrl(),
-                product.getCategoryId(),           // 🆕 NEW
-                null,                               // 🆕 NEW - categoryName (fetched by DAO)
+                product.getCategoryId(),
+                null,  // categoryName (fetched by DAO)
                 product.getShelfQuantity(),
                 product.getWarehouseQuantity(),
                 product.getWebsiteQuantity(),
                 product.getStatus()
         );
+
+        // 🆕 NEW - Map discount fields!
+        dto.setDiscountPercentage(product.getDiscountPercentage());
+        dto.setDiscountStartDate(product.getDiscountStartDate());
+        dto.setDiscountEndDate(product.getDiscountEndDate());
+
+        return dto;
     }
 }
