@@ -129,7 +129,17 @@ export default function DiscountsManagement() {
         try {
             const res = await apiGetProductBatches(code);
             if (res.success) {
-                setBatches(res.data || []);
+                // Get product name from products array
+                const product = products.find(p => p.productCode === code);
+                const productName = product?.name || '';
+                
+                // Add productName to each batch
+                const batchesWithName = (res.data || []).map(batch => ({
+                    ...batch,
+                    productName: productName
+                }));
+                
+                setBatches(batchesWithName);
             } else {
                 setBatches([]);
             }

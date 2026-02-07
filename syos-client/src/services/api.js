@@ -422,7 +422,7 @@ export async function apiRemoveBatchDiscount(batchId) {
 
 // GET CASHIER PROMOTIONS (Active discounts for cashiers to view)
 export async function apiGetCashierPromotions() {
-    const res = await fetch(`${BASE_URL}/api/admin/cashier/promotions`, {
+    const res = await fetch(`${BASE_URL}/api/cashier/promotions`, {
         method: "GET",
         credentials: "include",
     });

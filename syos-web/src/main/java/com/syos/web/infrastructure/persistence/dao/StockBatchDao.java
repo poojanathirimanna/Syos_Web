@@ -222,10 +222,16 @@ public class StockBatchDao {
     /**
      * 🆕 NEW - Get all batches with active discounts (with product info)
      */
+    /**
+     * 🆕 NEW - Get all batches with active discounts (with product info)
+     */
     public List<PromotionDTO> getAllActiveBatchDiscounts() throws SQLException {
         List<PromotionDTO> promotions = new ArrayList<>();
+
+        // 🔥 UPDATED SQL - Added sb.available_quantity for debugging
         String sql = "SELECT sb.batch_id, sb.product_code, p.name, p.unit_price, " +
-                "sb.expiry_date, sb.discount_percentage, sb.discount_start_date, sb.discount_end_date " +
+                "sb.expiry_date, sb.available_quantity, sb.discount_percentage, " +  // 🆕 ADDED available_quantity
+                "sb.discount_start_date, sb.discount_end_date " +
                 "FROM stock_batches sb " +
                 "JOIN products p ON sb.product_code = p.product_code " +
                 "WHERE sb.discount_percentage > 0 " +
@@ -236,54 +242,76 @@ public class StockBatchDao {
                 "ORDER BY sb.discount_percentage DESC, sb.expiry_date ASC";
 
         try (Connection conn = Db.getConnection();
-             PreparedStatement stmt = conn.prepareStatement(sql);
-             ResultSet rs = stmt.executeQuery()) {
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
 
-            while (rs.next()) {
-                Integer batchId = rs.getInt("batch_id");
-                String productCode = rs.getString("product_code");
-                String productName = rs.getString("name");
-                BigDecimal originalPrice = rs.getBigDecimal("unit_price");
-                Date expiryDate = rs.getDate("expiry_date");
-                BigDecimal discountPercentage = rs.getBigDecimal("discount_percentage");
-                Date startDate = rs.getDate("discount_start_date");
-                Date endDate = rs.getDate("discount_end_date");
+            // 🆕 ADD DEBUG LOGGING
+            System.out.println("🔍 Executing batch discount query...");
+            System.out.println("📅 Current date (CURDATE): " + LocalDate.now());
 
-                // Calculate discounted price
-                BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
-                        discountPercentage.divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP)
-                );
-                BigDecimal discountedPrice = originalPrice.multiply(discountMultiplier)
-                        .setScale(2, java.math.RoundingMode.HALF_UP);
+            try (ResultSet rs = stmt.executeQuery()) {
+                int count = 0;
 
-                // Calculate days until expiry
-                int daysUntilExpiry = Integer.MAX_VALUE;
-                boolean isNearExpiry = false;
-                if (expiryDate != null) {
-                    daysUntilExpiry = (int) java.time.temporal.ChronoUnit.DAYS.between(
-                            LocalDate.now(),
-                            expiryDate.toLocalDate()
+                while (rs.next()) {
+                    count++;
+                    Integer batchId = rs.getInt("batch_id");
+                    String productCode = rs.getString("product_code");
+                    String productName = rs.getString("name");
+                    BigDecimal originalPrice = rs.getBigDecimal("unit_price");
+                    Date expiryDate = rs.getDate("expiry_date");
+                    int availableQty = rs.getInt("available_quantity");  // 🆕 NOW WE CAN READ THIS
+                    BigDecimal discountPercentage = rs.getBigDecimal("discount_percentage");
+                    Date startDate = rs.getDate("discount_start_date");
+                    Date endDate = rs.getDate("discount_end_date");
+
+                    // 🆕 DEBUG LOG
+                    System.out.println("  📦 Found Batch #" + batchId + " (" + productCode + "): " +
+                            discountPercentage + "% off, Qty: " + availableQty +
+                            ", Expires: " + expiryDate);
+
+                    // Calculate discounted price
+                    BigDecimal discountMultiplier = BigDecimal.ONE.subtract(
+                            discountPercentage.divide(new BigDecimal("100"), 4, java.math.RoundingMode.HALF_UP)
                     );
-                    isNearExpiry = daysUntilExpiry <= 7; // Near expiry if <= 7 days
+                    BigDecimal discountedPrice = originalPrice.multiply(discountMultiplier)
+                            .setScale(2, java.math.RoundingMode.HALF_UP);
+
+                    // Calculate days until expiry
+                    int daysUntilExpiry = Integer.MAX_VALUE;
+                    boolean isNearExpiry = false;
+                    if (expiryDate != null) {
+                        daysUntilExpiry = (int) java.time.temporal.ChronoUnit.DAYS.between(
+                                LocalDate.now(),
+                                expiryDate.toLocalDate()
+                        );
+                        isNearExpiry = daysUntilExpiry <= 7; // Near expiry if <= 7 days
+                    }
+
+                    PromotionDTO promotion = new PromotionDTO(
+                            productCode,
+                            productName,
+                            batchId,
+                            expiryDate != null ? expiryDate.toLocalDate() : null,
+                            originalPrice,
+                            discountedPrice,
+                            discountPercentage,
+                            startDate != null ? startDate.toLocalDate() : null,
+                            endDate != null ? endDate.toLocalDate() : null,
+                            daysUntilExpiry,
+                            isNearExpiry
+                    );
+
+                    promotions.add(promotion);
                 }
 
-                PromotionDTO promotion = new PromotionDTO(
-                        productCode,
-                        productName,
-                        batchId,
-                        expiryDate != null ? expiryDate.toLocalDate() : null,
-                        originalPrice,
-                        discountedPrice,
-                        discountPercentage,
-                        startDate != null ? startDate.toLocalDate() : null,
-                        endDate != null ? endDate.toLocalDate() : null,
-                        daysUntilExpiry,
-                        isNearExpiry
-                );
-
-                promotions.add(promotion);
+                // 🆕 DEBUG LOG
+                System.out.println("✅ Total batch discounts found: " + count);
             }
+        } catch (SQLException e) {
+            // 🆕 ERROR LOGGING
+            System.err.println("❌ SQL Error in getAllActiveBatchDiscounts: " + e.getMessage());
+            throw e;
         }
+
         return promotions;
     }
 }

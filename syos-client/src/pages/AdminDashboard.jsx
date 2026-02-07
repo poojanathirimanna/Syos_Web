@@ -113,7 +113,6 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
                         user={user}
                         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
                         onLogout={onLogout}
-                        showNotifications={true}
                     />
 
                     <div className="content-area">

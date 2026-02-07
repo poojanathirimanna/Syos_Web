@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/common/Sidebar";
 import Header from "../components/common/Header";
-import { apiGetProducts, apiCreateBill, apiGetCashierBills, apiGetCategories, apiGetBillDetails } from "../services/api";
+import { apiGetProducts, apiCreateBill, apiGetCashierBills, apiGetCategories, apiGetBillDetails, apiGetCashierPromotions } from "../services/api";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function CashierDashboard({ user, onLogout }) {
@@ -21,6 +21,7 @@ export default function CashierDashboard({ user, onLogout }) {
     const [showBillModal, setShowBillModal] = useState(false);
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage] = useState(10);
+    const [promotions, setPromotions] = useState([]);
 
     const showNotification = (message, type = 'info') => {
         const id = Date.now();
@@ -33,19 +34,22 @@ export default function CashierDashboard({ user, onLogout }) {
     const menuItems = [
         { id: "pos", icon: "🛒", label: "Point of Sale" },
         { id: "transactions", icon: "💰", label: "Transactions" },
-        { id: "customers", icon: "👥", label: "Customers" },
-        { id: "rewards", icon: "🎁", label: "Rewards" },
+        { id: "promotions", icon: "🏷️", label: "Promotions" },
         { id: "reports", icon: "📊", label: "Reports" },
     ];
 
     useEffect(() => {
         loadProducts();
         loadCategories();
+        loadPromotions();
     }, []);
 
     useEffect(() => {
         if (activeMenu === "transactions") {
             loadBills();
+        } else if (activeMenu === "pos") {
+            // Reload promotions when returning to POS to get latest discounts
+            loadPromotions();
         }
     }, [activeMenu]);
 
@@ -57,6 +61,18 @@ export default function CashierDashboard({ user, onLogout }) {
             }
         } catch (err) {
             console.error("Error loading categories:", err);
+        }
+    };
+
+    const loadPromotions = async () => {
+        try {
+            const response = await apiGetCashierPromotions();
+            if (response.success) {
+                setPromotions(response.data || []);
+                console.log('🎁 Loaded promotions:', response.data);
+            }
+        } catch (err) {
+            console.error("Error loading promotions:", err);
         }
     };
 
@@ -168,6 +184,37 @@ Status: ${bill.status || 'Completed'}
             return;
         }
 
+        console.log('🛒 Adding to cart:', product.name, 'Product Code:', product.productCode);
+        console.log('📦 Available promotions:', promotions.length);
+        console.log('🔍 All promotions:', promotions);
+
+        // Find active promotion for this product from promotions list
+        const activePromotion = promotions.find(promo => 
+            promo.productCode === product.productCode &&
+            isDiscountActive(promo.discountStartDate, promo.discountEndDate)
+        );
+
+        console.log('🎯 Active promotion found:', activePromotion);
+
+        // Check if product has discount in its own data (fallback)
+        const productHasDiscount = product.discountPercentage > 0 && 
+            isDiscountActive(product.discountStartDate, product.discountEndDate);
+
+        console.log('💰 Product has discount:', productHasDiscount, 'Discount %:', product.discountPercentage);
+
+        // Use promotion discount or product discount
+        const discountPercentage = activePromotion?.discountPercentage || 
+            (productHasDiscount ? product.discountPercentage : 0);
+        
+        console.log('✅ Final discount percentage:', discountPercentage);
+        
+        const hasActiveDiscount = discountPercentage > 0;
+
+        // Calculate the final price (with discount if applicable)
+        const finalPrice = hasActiveDiscount 
+            ? product.unitPrice - (product.unitPrice * discountPercentage / 100)
+            : product.unitPrice;
+
         const existingItem = cart.find(item => item.productCode === product.productCode);
         if (existingItem) {
             // Check if adding more would exceed shelf stock
@@ -186,15 +233,51 @@ Status: ${bill.status || 'Completed'}
                     ? { ...p, shelfQuantity: p.shelfQuantity - 1 }
                     : p
             ));
+            
+            // Show discount notification if applicable
+            if (hasActiveDiscount) {
+                showNotification(`${discountPercentage}% discount applied!`, 'success');
+            }
         } else {
-            setCart([...cart, { ...product, quantity: 1 }]);
+            const cartItem = {
+                ...product,
+                quantity: 1,
+                originalPrice: product.unitPrice,
+                finalPrice: finalPrice,
+                discountApplied: hasActiveDiscount ? discountPercentage : 0,
+                promotionType: activePromotion?.type || null
+            };
+            console.log('🎁 Created cart item:', cartItem);
+            console.log('   Original Price:', product.unitPrice);
+            console.log('   Final Price:', finalPrice);
+            console.log('   Discount Applied:', hasActiveDiscount ? discountPercentage : 0);
+            
+            setCart([...cart, cartItem]);
             // Decrease shelf quantity in products state
             setProducts(products.map(p =>
                 p.productCode === product.productCode
                     ? { ...p, shelfQuantity: p.shelfQuantity - 1 }
                     : p
             ));
+            
+            // Show discount notification if applicable
+            if (hasActiveDiscount) {
+                const promoType = activePromotion?.type === 'BATCH' ? 'Clearance Sale' : 'Promotion';
+                showNotification(`${product.name} added with ${discountPercentage}% ${promoType} discount!`, 'success');
+            }
         }
+    };
+
+    const isDiscountActive = (startDate, endDate) => {
+        // If dates are null or undefined, consider discount as active
+        // (backend should only return active discounts)
+        if (!startDate || !endDate) {
+            return true;
+        }
+        const now = new Date();
+        const start = new Date(startDate);
+        const end = new Date(endDate);
+        return now >= start && now <= end;
     };
 
     const updateQuantity = (productCode, newQuantity) => {
@@ -247,7 +330,21 @@ Status: ${bill.status || 'Completed'}
     };
 
     const getCartTotal = () => {
-        return cart.reduce((total, item) => total + (item.unitPrice * item.quantity), 0);
+        return cart.reduce((total, item) => {
+            const price = item.finalPrice || item.unitPrice;
+            return total + (price * item.quantity);
+        }, 0);
+    };
+
+    const getOriginalTotal = () => {
+        return cart.reduce((total, item) => {
+            const price = item.originalPrice || item.unitPrice;
+            return total + (price * item.quantity);
+        }, 0);
+    };
+
+    const getTotalSavings = () => {
+        return getOriginalTotal() - getCartTotal();
     };
 
     const handleCheckout = () => {
@@ -420,6 +517,21 @@ Status: ${bill.status || 'Completed'}
                     background: linear-gradient(135deg, #fff3e0 0%, #ffffff 100%);
                 }
 
+                .product-discount-badge {
+                    position: absolute;
+                    top: 8px;
+                    right: 8px;
+                    background: linear-gradient(135deg, #FF6B6B 0%, #E74C3C 100%);
+                    color: white;
+                    font-size: 11px;
+                    font-weight: 700;
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    text-align: center;
+                    z-index: 3;
+                    box-shadow: 0 3px 10px rgba(255, 107, 107, 0.4);
+                }
+
                 .low-stock-badge {
                     position: absolute;
                     top: 8px;
@@ -566,11 +678,43 @@ Status: ${bill.status || 'Completed'}
                     font-weight: 600;
                     color: #333;
                     margin-bottom: 4px;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    flex-wrap: wrap;
+                }
+
+                .cart-discount-badge {
+                    background: #FF6B6B;
+                    color: white;
+                    font-size: 10px;
+                    padding: 2px 6px;
+                    border-radius: 4px;
+                    font-weight: 700;
                 }
 
                 .cart-item-price {
                     color: #52B788;
                     font-size: 14px;
+                }
+
+                .cart-savings {
+                    padding: 12px 16px;
+                    background: linear-gradient(135deg, #FFEAA7 0%, #FFD700 100%);
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-weight: 600;
+                    color: #333;
+                    box-shadow: 0 2px 8px rgba(255, 215, 0, 0.3);
+                }
+
+                .savings-amount {
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #E67E22;
                 }
 
                 .cart-item-controls {
@@ -965,6 +1109,25 @@ Status: ${bill.status || 'Completed'}
                                                             const isLowStock = product.shelfQuantity > 0 && product.shelfQuantity < 10;
                                                             const isOutOfStock = !product.shelfQuantity || product.shelfQuantity <= 0;
                                                             
+                                                            // Check promotions array first
+                                                            const activePromotion = promotions.find(promo => 
+                                                                promo.productCode === product.productCode &&
+                                                                isDiscountActive(promo.discountStartDate, promo.discountEndDate)
+                                                            );
+                                                            
+                                                            // Check product's own discount data (fallback)
+                                                            const productHasDiscount = product.discountPercentage > 0 && 
+                                                                isDiscountActive(product.discountStartDate, product.discountEndDate);
+                                                            
+                                                            const discountPercentage = activePromotion?.discountPercentage || 
+                                                                (productHasDiscount ? product.discountPercentage : 0);
+                                                            
+                                                            const hasActiveDiscount = discountPercentage > 0;
+                                                            
+                                                            const discountedPrice = hasActiveDiscount 
+                                                                ? product.unitPrice - (product.unitPrice * discountPercentage / 100)
+                                                                : null;
+                                                            
                                                             return (
                                                                 <div
                                                                     key={product.productCode}
@@ -972,6 +1135,11 @@ Status: ${bill.status || 'Completed'}
                                                                     onClick={() => addToCart(product)}
                                                                     style={{ cursor: isOutOfStock ? 'not-allowed' : 'pointer' }}
                                                                 >
+                                                                    {hasActiveDiscount && (
+                                                                        <div className="product-discount-badge">
+                                                                            -{discountPercentage}% OFF
+                                                                        </div>
+                                                                    )}
                                                                     {isLowStock && (
                                                                         <div className="low-stock-badge">⚠️ Low Stock - Restock Soon</div>
                                                                     )}
@@ -991,7 +1159,20 @@ Status: ${bill.status || 'Completed'}
                                                                     ) : null}
                                                                     <div className="product-icon" style={{ display: product.imageUrl ? 'none' : 'flex' }}>📦</div>
                                                                     <div className="product-name">{product.name}</div>
-                                                                    <div className="product-price">Rs. {Number(product.unitPrice).toFixed(2)}</div>
+                                                                    <div className="product-price">
+                                                                        {hasActiveDiscount ? (
+                                                                            <>
+                                                                                <span style={{textDecoration: 'line-through', color: '#999', fontSize: '14px', marginRight: '6px'}}>
+                                                                                    Rs. {Number(product.unitPrice).toFixed(2)}
+                                                                                </span>
+                                                                                <span style={{color: '#52B788', fontWeight: '700'}}>
+                                                                                    Rs. {discountedPrice.toFixed(2)}
+                                                                                </span>
+                                                                            </>
+                                                                        ) : (
+                                                                            `Rs. ${Number(product.unitPrice).toFixed(2)}`
+                                                                        )}
+                                                                    </div>
                                                                     <div className="product-stock">
                                                                         Shelf: {product.shelfQuantity || 0} | 
                                                                         Total: {product.totalQuantity || 0}
@@ -1019,8 +1200,26 @@ Status: ${bill.status || 'Completed'}
                                                                 {cart.map(item => (
                                                                     <div key={item.productCode} className="cart-item">
                                                                         <div className="cart-item-info">
-                                                                            <div className="cart-item-name">{item.name}</div>
-                                                                            <div className="cart-item-price">Rs. {Number(item.unitPrice).toFixed(2)} each</div>
+                                                                            <div className="cart-item-name">
+                                                                                {item.name}
+                                                                                {item.discountApplied > 0 && (
+                                                                                    <span className="cart-discount-badge">-{item.discountApplied}% OFF</span>
+                                                                                )}
+                                                                            </div>
+                                                                            <div className="cart-item-price">
+                                                                                {item.discountApplied > 0 ? (
+                                                                                    <>
+                                                                                        <span style={{textDecoration: 'line-through', color: '#999', marginRight: '8px'}}>
+                                                                                            Rs. {Number(item.originalPrice).toFixed(2)}
+                                                                                        </span>
+                                                                                        <span style={{color: '#52B788', fontWeight: '600'}}>
+                                                                                            Rs. {Number(item.finalPrice).toFixed(2)} each
+                                                                                        </span>
+                                                                                    </>
+                                                                                ) : (
+                                                                                    `Rs. ${Number(item.unitPrice).toFixed(2)} each`
+                                                                                )}
+                                                                            </div>
                                                                         </div>
                                                                         <div className="cart-item-controls">
                                                                             <button
@@ -1046,6 +1245,12 @@ Status: ${bill.status || 'Completed'}
                                                                     </div>
                                                                 ))}
                                                             </div>
+                                                            {getTotalSavings() > 0 && (
+                                                                <div className="cart-savings">
+                                                                    <span>💰 Total Savings:</span>
+                                                                    <span className="savings-amount">Rs. {getTotalSavings().toFixed(2)}</span>
+                                                                </div>
+                                                            )}
                                                             <div className="cart-total">
                                                                 <div className="cart-total-label">Total Amount:</div>
                                                                 <div className="cart-total-value">₱{getCartTotal().toFixed(2)}</div>
@@ -1150,7 +1355,11 @@ Status: ${bill.status || 'Completed'}
                             </>
                         )}
 
-                        {activeMenu !== "pos" && activeMenu !== "transactions" && (
+                        {activeMenu === "promotions" && (
+                            <PromotionsView />
+                        )}
+
+                        {activeMenu !== "pos" && activeMenu !== "transactions" && activeMenu !== "promotions" && (
                             <div>
                                 <h1 className="section-title">{menuItems.find(m => m.id === activeMenu)?.label}</h1>
                                 <p style={{color: '#666'}}>Content for {activeMenu} section coming soon...</p>
@@ -1195,7 +1404,28 @@ function CheckoutModal({ cart, total, onClose, onSuccess }) {
     const [paymentMethod, setPaymentMethod] = useState("cash");
     const [amountPaid, setAmountPaid] = useState("");
 
+    console.log('🧾 Checkout Modal - Cart Items:', cart);
+    cart.forEach((item, index) => {
+        console.log(`   Item ${index + 1}: ${item.name}`);
+        console.log(`      Original Price: ${item.originalPrice}`);
+        console.log(`      Final Price: ${item.finalPrice}`);
+        console.log(`      Discount Applied: ${item.discountApplied}%`);
+    });
+
     const change = amountPaid ? Number(amountPaid) - total : 0;
+    
+    const getTotalSavings = () => {
+        return cart.reduce((savings, item) => {
+            if (item.discountApplied > 0 && item.originalPrice) {
+                const originalTotal = item.originalPrice * item.quantity;
+                const discountedTotal = item.finalPrice * item.quantity;
+                return savings + (originalTotal - discountedTotal);
+            }
+            return savings;
+        }, 0);
+    };
+    
+    const totalSavings = getTotalSavings();
 
     const handleSubmit = async (e) => {
         e.preventDefault();
@@ -1210,7 +1440,7 @@ function CheckoutModal({ cart, total, onClose, onSuccess }) {
             items: cart.map(item => ({
                 productCode: item.productCode,
                 quantity: item.quantity,
-                price: item.unitPrice
+                price: item.finalPrice || item.unitPrice // Use discounted price if available
             })),
             totalAmount: total,
             paymentMethod: paymentMethod,
@@ -1429,12 +1659,68 @@ function CheckoutModal({ cart, total, onClose, onSuccess }) {
 
                     <div className="order-summary">
                         <h3 style={{ marginBottom: '12px', color: '#666' }}>Order Summary</h3>
-                        {cart.map(item => (
-                            <div key={item.productCode} className="order-item">
-                                <span>{item.name} x{item.quantity}</span>
-                                <span>Rs. {(item.unitPrice * item.quantity).toFixed(2)}</span>
+                        {cart.map(item => {
+                            const price = item.finalPrice || item.unitPrice;
+                            const itemTotal = price * item.quantity;
+                            const hasDiscount = item.discountApplied > 0;
+                            const originalTotal = hasDiscount ? (item.originalPrice * item.quantity) : null;
+                            
+                            return (
+                                <div key={item.productCode} className="order-item">
+                                    <div style={{ flex: 1 }}>
+                                        <div style={{ marginBottom: hasDiscount ? '4px' : '0' }}>
+                                            {item.name} x{item.quantity}
+                                            {hasDiscount && (
+                                                <span style={{
+                                                    background: '#FF6B6B',
+                                                    color: 'white',
+                                                    fontSize: '10px',
+                                                    padding: '2px 6px',
+                                                    borderRadius: '4px',
+                                                    marginLeft: '6px',
+                                                    fontWeight: '700'
+                                                }}>
+                                                    -{item.discountApplied}% OFF
+                                                </span>
+                                            )}
+                                        </div>
+                                        {hasDiscount && (
+                                            <div style={{ fontSize: '12px', color: '#999' }}>
+                                                <span style={{ textDecoration: 'line-through' }}>
+                                                    Rs. {originalTotal.toFixed(2)}
+                                                </span>
+                                                <span style={{ color: '#52B788', marginLeft: '6px', fontWeight: '600' }}>
+                                                    Rs. {itemTotal.toFixed(2)}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                    {!hasDiscount && (
+                                        <span>Rs. {itemTotal.toFixed(2)}</span>
+                                    )}
+                                </div>
+                            );
+                        })}
+                        {totalSavings > 0 && (
+                            <div style={{
+                                padding: '8px 12px',
+                                background: 'linear-gradient(135deg, #FFEAA7 0%, #FFD700 100%)',
+                                borderRadius: '6px',
+                                marginTop: '8px',
+                                marginBottom: '8px',
+                                display: 'flex',
+                                justifyContent: 'space-between',
+                                alignItems: 'center',
+                                fontSize: '14px',
+                                fontWeight: '600',
+                                color: '#333'
+                            }}>
+                                <span>💰 Total Savings:</span>
+                                <span style={{ fontSize: '16px', fontWeight: '700', color: '#E67E22' }}>
+                                    Rs. {totalSavings.toFixed(2)}
+                                </span>
                             </div>
-                        ))}
+                        )}
                         <div className="order-total">
                             <span>Total:</span>
                             <span>Rs. {total.toFixed(2)}</span>
@@ -1756,6 +2042,353 @@ function BillDetailsModal({ bill, onClose, onDownload }) {
                         </button>
                     </div>
                 </div>
+            </div>
+        </>
+    );
+}
+
+function PromotionsView() {
+    const [promotions, setPromotions] = useState([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+        loadPromotions();
+    }, []);
+
+    const loadPromotions = async () => {
+        try {
+            setLoading(true);
+            const response = await apiGetCashierPromotions();
+            console.log('🎯 Promotions API Response:', response);
+            if (response.success) {
+                const promotionsData = response.data || [];
+                console.log('📊 Promotions Data:', promotionsData);
+                console.log('🔢 Total promotions:', promotionsData.length);
+                console.log('📦 Product discounts:', promotionsData.filter(p => p.type === 'PRODUCT').length);
+                console.log('⚡ Batch discounts:', promotionsData.filter(p => p.type === 'BATCH').length);
+                setPromotions(promotionsData);
+            }
+        } catch (err) {
+            console.error("Error loading promotions:", err);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const calculateDaysUntilExpiry = (expiryDate) => {
+        const now = new Date();
+        const expiry = new Date(expiryDate);
+        const diffTime = expiry - now;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        return diffDays;
+    };
+
+    const calculateDiscountedPrice = (price, discount) => {
+        return price - (price * discount / 100);
+    };
+
+    return (
+        <>
+            <style>{`
+                .promotions-container {
+                    padding: 20px;
+                }
+
+                .promotions-header {
+                    margin-bottom: 30px;
+                }
+
+                .promotions-title {
+                    font-size: 28px;
+                    font-weight: 700;
+                    color: #333;
+                    margin-bottom: 8px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                }
+
+                .promotions-subtitle {
+                    font-size: 16px;
+                    color: #666;
+                }
+
+                .discount-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+                    gap: 20px;
+                }
+
+                .discount-card {
+                    background: white;
+                    border-radius: 12px;
+                    padding: 24px;
+                    box-shadow: 0 3px 12px rgba(0,0,0,0.12);
+                    position: relative;
+                    overflow: hidden;
+                    transition: transform 0.2s, box-shadow 0.2s;
+                }
+
+                .discount-card:hover {
+                    transform: translateY(-4px);
+                    box-shadow: 0 6px 20px rgba(0, 0, 0, 0.15);
+                }
+
+                .discount-card.product-discount {
+                    border-left: 5px solid #3498db;
+                }
+
+                .discount-card.batch-discount {
+                    border-left: 5px solid #e74c3c;
+                }
+
+                .discount-type-badge {
+                    display: inline-block;
+                    padding: 6px 12px;
+                    border-radius: 20px;
+                    font-size: 11px;
+                    font-weight: 700;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 12px;
+                }
+
+                .discount-type-badge.product {
+                    background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+                    color: white;
+                }
+
+                .discount-type-badge.batch {
+                    background: linear-gradient(135deg, #e74c3c 0%, #c0392b 100%);
+                    color: white;
+                }
+
+                .discount-percentage {
+                    position: absolute;
+                    top: 20px;
+                    right: 20px;
+                    background: #FF6B6B;
+                    color: white;
+                    padding: 10px 18px;
+                    border-radius: 25px;
+                    font-weight: 700;
+                    font-size: 18px;
+                    box-shadow: 0 3px 12px rgba(255, 107, 107, 0.4);
+                }
+
+                .product-info {
+                    margin-bottom: 16px;
+                }
+
+                .product-name {
+                    font-size: 20px;
+                    font-weight: 600;
+                    color: #333;
+                    margin-bottom: 8px;
+                    padding-right: 90px;
+                }
+
+                .product-code {
+                    font-size: 13px;
+                    color: #999;
+                    font-family: 'Courier New', monospace;
+                }
+
+                .batch-info {
+                    background: #fff3cd;
+                    padding: 8px 12px;
+                    border-radius: 6px;
+                    margin-bottom: 16px;
+                    border-left: 3px solid #ffc107;
+                }
+
+                .batch-info-text {
+                    font-size: 13px;
+                    color: #856404;
+                    font-weight: 600;
+                }
+
+                .expiry-warning {
+                    background: #f8d7da;
+                    padding: 10px 14px;
+                    border-radius: 8px;
+                    margin-bottom: 16px;
+                    border-left: 3px solid #dc3545;
+                }
+
+                .expiry-warning-text {
+                    font-size: 14px;
+                    color: #721c24;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .price-section {
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    margin-bottom: 16px;
+                }
+
+                .original-price {
+                    font-size: 18px;
+                    color: #999;
+                    text-decoration: line-through;
+                }
+
+                .discounted-price {
+                    font-size: 26px;
+                    font-weight: 700;
+                    color: #27ae60;
+                }
+
+                .discount-period {
+                    background: #f8f9fa;
+                    padding: 12px;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    color: #666;
+                }
+
+                .discount-period-label {
+                    font-weight: 600;
+                    margin-bottom: 4px;
+                    color: #333;
+                }
+
+                .no-promotions {
+                    text-align: center;
+                    padding: 60px 20px;
+                    background: white;
+                    border-radius: 12px;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+                }
+
+                .no-promotions-icon {
+                    font-size: 64px;
+                    margin-bottom: 16px;
+                }
+
+                .no-promotions-text {
+                    font-size: 20px;
+                    color: #666;
+                }
+
+                .loading-container {
+                    text-align: center;
+                    padding: 60px 20px;
+                }
+
+                .loading-spinner {
+                    font-size: 48px;
+                    animation: spin 1s linear infinite;
+                }
+
+                @keyframes spin {
+                    from { transform: rotate(0deg); }
+                    to { transform: rotate(360deg); }
+                }
+            `}</style>
+
+            <div className="promotions-container">
+                <div className="promotions-header">
+                    <h1 className="promotions-title">
+                        🏷️ Active Promotions
+                    </h1>
+                    <p className="promotions-subtitle">
+                        {loading 
+                            ? 'Loading promotions...'
+                            : promotions.length > 0 
+                                ? `${promotions.length} active ${promotions.length === 1 ? 'promotion' : 'promotions'}`
+                                : 'No active promotions at the moment'}
+                    </p>
+                </div>
+
+                {loading ? (
+                    <div className="loading-container">
+                        <div className="loading-spinner">⏳</div>
+                    </div>
+                ) : promotions.length > 0 ? (
+                    <div className="discount-grid">
+                        {promotions.map((promo, index) => {
+                            const isProductDiscount = promo.type === "PRODUCT";
+                            const isBatchDiscount = promo.type === "BATCH";
+                            const daysUntilExpiry = isBatchDiscount && promo.expiryDate 
+                                ? calculateDaysUntilExpiry(promo.expiryDate) 
+                                : null;
+
+                            return (
+                                <div 
+                                    key={index} 
+                                    className={`discount-card ${isProductDiscount ? 'product-discount' : 'batch-discount'}`}
+                                >
+                                    <div className="discount-percentage">
+                                        -{promo.discountPercentage}%
+                                    </div>
+
+                                    <div className={`discount-type-badge ${isProductDiscount ? 'product' : 'batch'}`}>
+                                        {isProductDiscount ? '📦 Product Promotion' : '⚡ Clearance Sale'}
+                                    </div>
+
+                                    <div className="product-info">
+                                        <div className="product-name">{promo.productName || 'Product'}</div>
+                                        <div className="product-code">Code: {promo.productCode}</div>
+                                    </div>
+
+                                    {isBatchDiscount && promo.batchId && (
+                                        <div className="batch-info">
+                                            <div className="batch-info-text">
+                                                🏷️ Batch ID: {promo.batchId}
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {isBatchDiscount && daysUntilExpiry !== null && (
+                                        <div className="expiry-warning">
+                                            <div className="expiry-warning-text">
+                                                <span>⏰</span>
+                                                <span>
+                                                    {daysUntilExpiry > 0 
+                                                        ? `Expires in ${daysUntilExpiry} ${daysUntilExpiry === 1 ? 'day' : 'days'}!`
+                                                        : daysUntilExpiry === 0
+                                                            ? 'Expires TODAY!'
+                                                            : 'Expired'}
+                                                </span>
+                                            </div>
+                                        </div>
+                                    )}
+
+                                    {promo.unitPrice && (
+                                        <div className="price-section">
+                                            <span className="original-price">
+                                                Rs. {Number(promo.unitPrice).toFixed(2)}
+                                            </span>
+                                            <span className="discounted-price">
+                                                Rs. {calculateDiscountedPrice(promo.unitPrice, promo.discountPercentage).toFixed(2)}
+                                            </span>
+                                        </div>
+                                    )}
+
+                                    {promo.discountStartDate && promo.discountEndDate && (
+                                        <div className="discount-period">
+                                            <div className="discount-period-label">Valid Period:</div>
+                                            <div>
+                                                {new Date(promo.discountStartDate).toLocaleDateString()} - {new Date(promo.discountEndDate).toLocaleDateString()}
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
+                            );
+                        })}
+                    </div>
+                ) : (
+                    <div className="no-promotions">
+                        <div className="no-promotions-icon">🛍️</div>
+                        <div className="no-promotions-text">No active promotions at the moment</div>
+                    </div>
+                )}
             </div>
         </>
     );

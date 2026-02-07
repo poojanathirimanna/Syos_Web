@@ -1,6 +1,6 @@
 import React from 'react';
 
-export default function Header({ user, onToggleSidebar, onLogout, showNotifications = true }) {
+export default function Header({ user, onToggleSidebar, onLogout, showNotifications = false }) {
     const handleLogout = () => {
         console.log("🔴 LOGOUT BUTTON CLICKED!");
         console.log("🔍 onLogout function exists?", !!onLogout);
