@@ -17,6 +17,33 @@ export default function DiscountsManagement() {
     const [showBatchModal, setShowBatchModal] = useState(false);
     const [batchForm, setBatchForm] = useState({ productCode: "", batchId: "", percentage: 0, startDate: "", endDate: "" });
 
+    // Toast notifications
+    const [toasts, setToasts] = useState([]);
+    
+    // Confirmation modal
+    const [confirmModal, setConfirmModal] = useState({ show: false, message: '', onConfirm: null });
+
+    const showToast = (message, type = 'success') => {
+        const id = Date.now();
+        setToasts(prev => [...prev, { id, message, type }]);
+        setTimeout(() => {
+            setToasts(prev => prev.filter(t => t.id !== id));
+        }, 4000);
+    };
+
+    const showConfirm = (message, onConfirm) => {
+        setConfirmModal({ show: true, message, onConfirm });
+    };
+
+    const handleConfirm = () => {
+        if (confirmModal.onConfirm) confirmModal.onConfirm();
+        setConfirmModal({ show: false, message: '', onConfirm: null });
+    };
+
+    const handleCancel = () => {
+        setConfirmModal({ show: false, message: '', onConfirm: null });
+    };
+
     useEffect(() => { loadProducts(); }, []);
 
     const loadProducts = async () => {
@@ -25,30 +52,11 @@ export default function DiscountsManagement() {
             
             if (res.success) {
                 const productsData = res.data?.products || res.data || [];
-                console.log('✅ Loaded products with discounts:', productsData);
-                
-                // Debug: Check if apple001 has discount data
-                const appleProduct = productsData.find(p => p.productCode === 'apple001');
-                if (appleProduct) {
-                    console.log('🍎 apple001 discount data:', {
-                        discountPercentage: appleProduct.discountPercentage,
-                        discountStartDate: appleProduct.discountStartDate,
-                        discountEndDate: appleProduct.discountEndDate
-                    });
-                    if (appleProduct.discountPercentage === 0 || appleProduct.discountPercentage === null) {
-                        console.error('⚠️ BACKEND ISSUE: apple001 has 10% discount in DB but API returns 0!');
-                        console.error('⚠️ Backend SQL query is NOT fetching discount columns properly');
-                    }
-                }
-                
-                // Ensure state is updated with latest data
                 setProducts(Array.isArray(productsData) ? [...productsData] : []);
             } else {
-                console.warn('Failed to load products:', res.message);
                 setProducts([]);
             }
         } catch (err) { 
-            console.error('❌ Error loading products:', err); 
             setProducts([]);
         }
     };
@@ -81,30 +89,30 @@ export default function DiscountsManagement() {
             const res = await apiSetProductDiscount(payload);
             if (res.success) {
                 setShowProductModal(false);
-                // Reload products to show updated discount
                 await loadProducts();
-                alert(`✅ Discount of ${form.percentage}% applied successfully to ${form.productCode}!`);
+                showToast(`${form.percentage}% discount applied to ${form.productCode}`, 'success');
             } else {
-                alert(res.message || "Failed to apply discount");
+                showToast(res.message || "Failed to apply discount", 'error');
             }
         } catch (err) { 
-            alert(err.message || err); 
+            showToast(err.message || 'Error applying discount', 'error'); 
         }
     };
 
     const removeProductDiscount = async (code) => {
-        if (!confirm(`Remove discount for ${code}?`)) return;
-        try {
-            const res = await apiRemoveProductDiscount(code);
-            if (res.success) {
-                await loadProducts();
-                alert(`✅ Discount removed successfully from ${code}!`);
-            } else {
-                alert(res.message || "Failed to remove discount");
+        showConfirm(`Remove discount for ${code}?`, async () => {
+            try {
+                const res = await apiRemoveProductDiscount(code);
+                if (res.success) {
+                    await loadProducts();
+                    showToast(`Discount removed from ${code}`, 'success');
+                } else {
+                    showToast(res.message || "Failed to remove discount", 'error');
+                }
+            } catch (err) { 
+                showToast(err.message || 'Error removing discount', 'error'); 
             }
-        } catch (err) { 
-            alert(err.message || err); 
-        }
+        });
     };
 
     // Batch flows
@@ -142,30 +150,34 @@ export default function DiscountsManagement() {
             const res = await apiSetBatchDiscount(payload);
             if (res.success) { 
                 setShowBatchModal(false);
-                alert("Batch discount applied successfully!");
+                if (selectedProductForBatch) {
+                    await loadBatchesForProduct(selectedProductForBatch);
+                }
+                showToast(`${batchForm.percentage}% discount applied to Batch #${batchForm.batchId}`, 'success');
             } else {
-                alert(res.message || "Failed to apply batch discount");
+                showToast(res.message || "Failed to apply batch discount", 'error');
             }
         } catch (err) { 
-            alert(err.message || err); 
+            showToast(err.message || 'Error applying batch discount', 'error'); 
         }
     };
 
     const removeBatchDiscount = async (batchId) => {
-        if (!confirm(`Remove discount for batch ${batchId}?`)) return;
-        try {
-            const res = await apiRemoveBatchDiscount(batchId);
-            if (res.success) { 
-                alert("Batch discount removed successfully!");
-                if (selectedProductForBatch) {
-                    loadBatchesForProduct(selectedProductForBatch);
+        showConfirm(`Remove discount for batch ${batchId}?`, async () => {
+            try {
+                const res = await apiRemoveBatchDiscount(batchId);
+                if (res.success) { 
+                    if (selectedProductForBatch) {
+                        await loadBatchesForProduct(selectedProductForBatch);
+                    }
+                    showToast(`Discount removed from Batch #${batchId}`, 'success');
+                } else {
+                    showToast(res.message || "Failed to remove batch discount", 'error');
                 }
-            } else {
-                alert(res.message || "Failed to remove batch discount");
+            } catch (err) { 
+                showToast(err.message || 'Error removing batch discount', 'error'); 
             }
-        } catch (err) { 
-            alert(err.message || err); 
-        }
+        });
     };
 
     const filtered = products.filter(p =>
@@ -213,7 +225,47 @@ export default function DiscountsManagement() {
                 .btn-cancel { background: white; color: #666; border: 2px solid #e0e0e0; padding: 10px 20px; border-radius: 8px; font-weight: 600; cursor: pointer; }
                 .btn-cancel:hover { border-color: #f44336; color: #f44336; }
                 .empty-state { text-align: center; padding: 60px 20px; color: #999; }
+                .toast-container { position: fixed; top: 20px; right: 20px; z-index: 10000; display: flex; flex-direction: column; gap: 10px; }
+                .toast { min-width: 300px; padding: 16px 20px; border-radius: 8px; box-shadow: 0 4px 12px rgba(0,0,0,0.15); display: flex; align-items: center; gap: 12px; animation: slideIn 0.3s ease-out; font-weight: 500; }
+                .toast.success { background: #4caf50; color: white; }
+                .toast.error { background: #f44336; color: white; }
+                .toast-icon { font-size: 20px; }
+                @keyframes slideIn { from { transform: translateX(400px); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+                .confirm-overlay { position: fixed; inset: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 10001; animation: fadeIn 0.2s ease-out; }
+                .confirm-dialog { background: white; border-radius: 12px; padding: 24px; min-width: 400px; box-shadow: 0 8px 32px rgba(0,0,0,0.3); animation: scaleIn 0.2s ease-out; }
+                .confirm-message { font-size: 16px; color: #333; margin-bottom: 24px; font-weight: 500; }
+                .confirm-actions { display: flex; gap: 12px; justify-content: flex-end; }
+                .confirm-btn { padding: 10px 24px; border-radius: 8px; font-weight: 600; cursor: pointer; border: none; font-size: 14px; transition: all 0.2s; }
+                .confirm-btn.cancel { background: #f5f5f5; color: #666; }
+                .confirm-btn.cancel:hover { background: #e0e0e0; }
+                .confirm-btn.ok { background: linear-gradient(135deg, #52B788 0%, #40916C 100%); color: white; }
+                .confirm-btn.ok:hover { transform: translateY(-2px); box-shadow: 0 4px 12px rgba(82, 183, 136, 0.3); }
+                @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+                @keyframes scaleIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
             `}</style>
+
+            {/* Confirmation Modal */}
+            {confirmModal.show && (
+                <div className="confirm-overlay" onClick={handleCancel}>
+                    <div className="confirm-dialog" onClick={(e) => e.stopPropagation()}>
+                        <div className="confirm-message">{confirmModal.message}</div>
+                        <div className="confirm-actions">
+                            <button className="confirm-btn cancel" onClick={handleCancel}>Cancel</button>
+                            <button className="confirm-btn ok" onClick={handleConfirm}>OK</button>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* Toast Notifications */}
+            <div className="toast-container">
+                {toasts.map(toast => (
+                    <div key={toast.id} className={`toast ${toast.type}`}>
+                        <span className="toast-icon">{toast.type === 'success' ? '✅' : '⚠️'}</span>
+                        <span>{toast.message}</span>
+                    </div>
+                ))}
+            </div>
 
             <div className="discounts-container">
                 <div className="discounts-header">

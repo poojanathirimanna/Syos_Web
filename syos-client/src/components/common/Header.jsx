@@ -1,23 +1,20 @@
 import React from 'react';
 
 export default function Header({ user, onToggleSidebar, onLogout, showNotifications = true }) {
-    console.log("📥 Header received props:", {
-        user: user?.username,
-        onToggleSidebar: typeof onToggleSidebar,
-        onLogout: typeof onLogout,
-        showNotifications
-    });
-
     const handleLogout = () => {
-        console.log("🔴 Logout button clicked!");
-        console.log("🔍 onLogout value:", onLogout);
+        console.log("🔴 LOGOUT BUTTON CLICKED!");
+        console.log("🔍 onLogout function exists?", !!onLogout);
         console.log("🔍 onLogout type:", typeof onLogout);
 
-        if (onLogout) {
-            console.log("✅ Calling onLogout function...");
-            onLogout();
+        if (typeof onLogout === 'function') {
+            console.log("✅ Executing logout...");
+            try {
+                onLogout();
+            } catch (error) {
+                console.error("❌ Error calling onLogout:", error);
+            }
         } else {
-            console.error("❌ onLogout function is not provided!");
+            console.error("❌ onLogout is not a function! Value:", onLogout);
         }
     };
 
@@ -122,7 +119,7 @@ export default function Header({ user, onToggleSidebar, onLogout, showNotificati
                     font-size: 14px;
                     transition: all 0.2s ease;
                     position: relative;
-                    z-index: 12;
+                    z-index: 10002;
                     pointer-events: auto;
                     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
                 }

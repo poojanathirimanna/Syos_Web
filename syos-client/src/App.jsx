@@ -25,27 +25,10 @@ export default function App() {
 
             {/* Redirect all dashboard routes to /home - Home.jsx will handle role-based routing */}
             <Route path="/admin/dashboard" element={<Navigate to="/home" replace />} />
+            <Route path="/admin/discounts" element={<Navigate to="/home" replace />} />
             <Route path="/cashier/dashboard" element={<Navigate to="/home" replace />} />
+            <Route path="/cashier/promotions" element={<Navigate to="/home" replace />} />
             <Route path="/customer/dashboard" element={<Navigate to="/home" replace />} />
-
-            {/* Direct routes to specific dashboard tabs */}
-            <Route
-                path="/admin/discounts"
-                element={
-                    <ProtectedRoute>
-                        <AdminDashboard initialMenu="discounts" />
-                    </ProtectedRoute>
-                }
-            />
-
-            <Route
-                path="/cashier/promotions"
-                element={
-                    <ProtectedRoute>
-                        <CashierDashboard initialMenu="promotions" />
-                    </ProtectedRoute>
-                }
-            />
 
             {/* Fallback */}
             <Route path="*" element={<Navigate to="/login" />} />

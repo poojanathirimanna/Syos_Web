@@ -12,15 +12,11 @@ export default function Home() {
 
     useEffect(() => {
         (async () => {
-            console.log("🔍 Home: Fetching user data...");
             const data = await apiMe();
-            console.log("🔍 Home: apiMe response:", data);
 
             if (data?.loggedIn) {
-                console.log("✅ Home: User is logged in:", data);
                 setUser(data);
             } else {
-                console.log("❌ Home: User not logged in, redirecting...");
                 nav("/login");
             }
             setLoading(false);
@@ -28,16 +24,22 @@ export default function Home() {
     }, [nav]);
 
     const onLogout = async () => {
-        console.log("🚪 Starting logout process...");
+        console.log("🚪 Home.jsx: Logout initiated");
         try {
             const result = await apiLogout();
             console.log("✅ Logout API response:", result);
-            nav("/login");
-            console.log("🔄 Redirecting to login page...");
+            
+            // Clear user state immediately
+            setUser(null);
+            
+            // Navigate to login
+            nav("/login", { replace: true });
+            console.log("🔄 Redirected to login page");
         } catch (error) {
             console.error("❌ Logout error:", error);
-            // Still navigate to login even if there's an error
-            nav("/login");
+            // Clear state and redirect even if API call fails
+            setUser(null);
+            nav("/login", { replace: true });
         }
     };
 
@@ -58,7 +60,6 @@ export default function Home() {
 
     // If no user data, redirect to login
     if (!user) {
-        console.log("⚠️ Home: No user data, redirecting to login...");
         nav("/login");
         return null;
     }
@@ -67,32 +68,35 @@ export default function Home() {
     // Backend may return roleId or role_id - support both formats
     const roleId = user?.role_id || user?.roleId;
 
-    console.log("🔍 Home: user state:", user);
-    console.log("🔍 Home: role_id:", user?.role_id);
-    console.log("🔍 Home: roleId:", user?.roleId);
-    console.log("🔍 Home: resolved roleId:", roleId);
-    console.log("🔍 Home: onLogout type:", typeof onLogout);
-
     // Admin Dashboard (role_id = 1)
     if (roleId === 1) {
-        console.log("✅ Home: Rendering AdminDashboard for roleId 1");
+        console.log("📤 Home.jsx: Passing to AdminDashboard:", { 
+            user: user?.username, 
+            hasOnLogout: !!onLogout,
+            onLogoutType: typeof onLogout 
+        });
         return <AdminDashboard user={user} onLogout={onLogout} />;
     }
 
     // Cashier Dashboard (role_id = 2)
     if (roleId === 2) {
-        console.log("✅ Home: Rendering CashierDashboard for roleId 2");
+        console.log("📤 Home.jsx: Passing to CashierDashboard:", { 
+            user: user?.username, 
+            hasOnLogout: !!onLogout 
+        });
         return <CashierDashboard user={user} onLogout={onLogout} />;
     }
 
     // Customer Dashboard (role_id = 3 or 4) - Landing/Home Page
     if (roleId === 3 || roleId === 4) {
-        console.log("✅ Home: Rendering CustomerDashboard for roleId", roleId);
+        console.log("📤 Home.jsx: Passing to CustomerDashboard:", { 
+            user: user?.username, 
+            hasOnLogout: !!onLogout 
+        });
         return <CustomerDashboard user={user} onLogout={onLogout} />;
     }
 
     // Fallback for unknown roles - redirect to login
-    console.log("⚠️ Home: Unknown roleId:", roleId, "- redirecting to login...");
     setTimeout(() => nav("/login"), 0);  // Use setTimeout to avoid setState during render
     return (
         <div style={{

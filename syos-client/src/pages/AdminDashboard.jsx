@@ -2,8 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import Sidebar from "../components/common/Sidebar";
 import Header from "../components/common/Header";
-import StatCard from "../components/dashboard/StatCard";
-import CompanyCard from "../components/dashboard/CompanyCard";
+import AnalyticsDashboard from "../components/dashboard/AnalyticsDashboard";
 import ProductManagement from "../components/dashboard/ProductManagement";
 import CategoryManagement from "../components/dashboard/CategoryManagement";
 import InventoryManagement from "../components/dashboard/InventoryManagement";
@@ -14,7 +13,11 @@ import DiscountsManagement from "./DiscountsManagement";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function AdminDashboard({ user, onLogout, initialMenu }) {
-    console.log("🎯 AdminDashboard props:", { user: user?.username, onLogout: typeof onLogout });
+    console.log("🎯 AdminDashboard received:", { 
+        user: user?.username, 
+        hasOnLogout: !!onLogout,
+        onLogoutType: typeof onLogout 
+    });
 
     const [activeMenu, setActiveMenu] = useState(initialMenu || "dashboard");
     const [sidebarOpen, setSidebarOpen] = useState(true);
@@ -23,7 +26,7 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
     const navigate = useNavigate();
 
     const menuItems = [
-        { id: "dashboard", icon: "📊", label: "Dashboard" },
+        { id: "dashboard", icon: "📊", label: "Analytics" },
         { 
             id: "product-management", 
             icon: "📦", 
@@ -41,13 +44,6 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
     ];
 
     const handleMenuClick = (id) => {
-        // If clicking discounts, navigate to a direct route for shareable URL
-        if (id === 'discounts') {
-            setActiveMenu('discounts');
-            navigate('/admin/discounts');
-            return;
-        }
-
         // Check if it's a parent menu with submenu
         const menuItem = menuItems.find(item => item.id === id);
         if (menuItem && menuItem.submenu) {
@@ -61,14 +57,6 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
             setActiveMenu(id);
         }
     };
-
-    const companies = [
-        { name: "DSI", color: "blue" },
-        { name: "MA's Kitchen", color: "gray" },
-        { name: "Touch of Nature", color: "cyan" },
-        { name: "Company Name", color: "pink" },
-        { name: "Company Name", color: "purple" },
-    ];
 
     return (
         <>
@@ -106,55 +94,6 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
                     letter-spacing: 1px;
                     margin-bottom: 24px;
                 }
-                
-                .stats-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                    gap: 20px;
-                    margin-bottom: 40px;
-                }
-                
-                .platform-stats {
-                    display: flex;
-                    justify-content: space-around;
-                    align-items: center;
-                    margin-bottom: 16px;
-                }
-                
-                .platform-item {
-                    text-align: center;
-                }
-                
-                .platform-icon {
-                    font-size: 40px;
-                    margin-bottom: 8px;
-                }
-                
-                .platform-count {
-                    font-size: 32px;
-                    font-weight: 700;
-                    color: #333;
-                }
-                
-                .companies-section {
-                    margin-top: 40px;
-                }
-                
-                .companies-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
-                    gap: 20px;
-                }
-                
-                @media (max-width: 768px) {
-                    .stats-grid {
-                        grid-template-columns: 1fr;
-                    }
-                    
-                    .companies-grid {
-                        grid-template-columns: 1fr;
-                    }
-                }
             `}</style>
 
             <div className="dashboard-container">
@@ -169,7 +108,7 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
                 />
 
                 <main className="main-content">
-                    {console.log("📤 Passing to Header:", { user: user?.username, onLogout: typeof onLogout })}
+
                     <Header
                         user={user}
                         onToggleSidebar={() => setSidebarOpen(!sidebarOpen)}
@@ -179,99 +118,7 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
 
                     <div className="content-area">
                         {activeMenu === "dashboard" && (
-                            <>
-                                <h1 className="section-title">Admin Overview</h1>
-
-                                <div className="stats-grid">
-                                    <StatCard
-                                        label="No. of Companies"
-                                        value="15"
-                                        buttonText="View Companies"
-                                        onButtonClick={() => console.log('View Companies')}
-                                    />
-
-                                    <StatCard
-                                        label="No. of Brands"
-                                        value="14"
-                                        buttonText="View Brands"
-                                    />
-
-                                    <StatCard
-                                        label="Engagement Count"
-                                        value="92"
-                                        buttonText="View Details"
-                                    />
-
-                                    <StatCard
-                                        label="No. of Rewards"
-                                        value="1586"
-                                        buttonText="View Details"
-                                    />
-
-                                    <StatCard
-                                        label="Total Customers"
-                                        value="242"
-                                        buttonText="View Customers"
-                                    />
-
-                                    <StatCard>
-                                        <div className="platform-stats">
-                                            <div className="platform-item">
-                                                <div className="platform-icon">🤖</div>
-                                                <div className="platform-count">242</div>
-                                            </div>
-                                            <div className="platform-item">
-                                                <div className="platform-icon">🍎</div>
-                                                <div className="platform-count">0</div>
-                                            </div>
-                                        </div>
-                                    </StatCard>
-
-                                    <StatCard
-                                        label="Ongoing Campaigns"
-                                        value="47"
-                                        buttonText="View Campaigns"
-                                    />
-
-                                    <StatCard
-                                        label="Campaigns Ending Soon"
-                                        value="0"
-                                        buttonText="View Campaigns"
-                                    />
-                                </div>
-
-                                <div className="companies-section">
-                                    <h2 className="section-title">Company Drill Down</h2>
-                                    <h3 className="section-title" style={{fontSize: '18px', color: '#aaa', marginTop: '20px'}}>
-                                        Companies
-                                    </h3>
-
-                                    <div className="companies-grid">
-                                        {companies.map((company, index) => (
-                                            <CompanyCard
-                                                key={index}
-                                                name={company.name}
-                                                colorScheme={company.color}
-                                                onClick={() => console.log(`Clicked ${company.name}`)}
-                                            />
-                                        ))}
-                                    </div>
-                                </div>
-                            </>
-                        )}
-
-                        {activeMenu === "admin" && (
-                            <div>
-                                <h1 className="section-title">Admin Dashboard</h1>
-                                <p style={{color: '#666'}}>Admin dashboard content goes here...</p>
-                            </div>
-                        )}
-
-                        {activeMenu === "brand" && (
-                            <div>
-                                <h1 className="section-title">Brand Dashboard</h1>
-                                <p style={{color: '#666'}}>Brand dashboard content goes here...</p>
-                            </div>
+                            <AnalyticsDashboard />
                         )}
 
                         {activeMenu === "products" && (
@@ -302,7 +149,7 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
                             <ReportsManagement />
                         )}
 
-                        {activeMenu !== "dashboard" && activeMenu !== "admin" && activeMenu !== "brand" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && activeMenu !== "cashiers" && activeMenu !== "orders" && activeMenu !== "discounts" && activeMenu !== "reports" && (
+                        {activeMenu !== "dashboard" && activeMenu !== "products" && activeMenu !== "categories" && activeMenu !== "inventory" && activeMenu !== "cashiers" && activeMenu !== "orders" && activeMenu !== "discounts" && activeMenu !== "reports" && (
                             <div>
                                 <h1 className="section-title">
                                     {menuItems.find(m => m.id === activeMenu)?.label}
