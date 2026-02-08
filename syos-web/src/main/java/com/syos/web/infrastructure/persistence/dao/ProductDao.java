@@ -12,6 +12,7 @@ import java.util.List;
 import java.util.Optional;
 import com.syos.web.application.dto.PromotionDTO;
 
+
 /**
  * Data Access Object for Product
  * Updated to work with inventory_locations table and product_categories
@@ -165,6 +166,46 @@ public class ProductDao {
             }
             throw new SQLException("Product not found: " + product.getProductCode());
         }
+    }
+
+    /**
+     * Find product by product code
+     */
+    public Optional<Product> findByCode(String productCode) throws SQLException {
+        String sql = "SELECT " +
+                "    p.product_code, " +
+                "    p.name, " +
+                "    p.unit_price, " +
+                "    p.discount_percentage, " +
+                "    p.discount_start_date, " +
+                "    p.discount_end_date, " +
+                "    p.image_url, " +
+                "    p.category_id, " +
+                "    pc.category_name, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
+                "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity, " +
+                "    p.is_deleted " +
+                "FROM products p " +
+                "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +
+                "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
+                "WHERE p.product_code = ? " +
+                "GROUP BY p.product_code, p.name, p.unit_price, p.discount_percentage, " +
+                "         p.discount_start_date, p.discount_end_date, p.image_url, " +
+                "         p.category_id, pc.category_name, p.is_deleted";
+
+        try (Connection conn = Db.getConnection();
+             PreparedStatement stmt = conn.prepareStatement(sql)) {
+
+            stmt.setString(1, productCode);
+
+            try (ResultSet rs = stmt.executeQuery()) {
+                if (rs.next()) {
+                    return Optional.of(mapResultSetToProduct(rs));
+                }
+            }
+        }
+        return Optional.empty();
     }
 
     /**

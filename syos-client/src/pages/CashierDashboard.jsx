@@ -35,7 +35,6 @@ export default function CashierDashboard({ user, onLogout }) {
         { id: "pos", icon: "🛒", label: "Point of Sale" },
         { id: "transactions", icon: "💰", label: "Transactions" },
         { id: "promotions", icon: "🏷️", label: "Promotions" },
-        { id: "reports", icon: "📊", label: "Reports" },
     ];
 
     useEffect(() => {
@@ -184,29 +183,19 @@ Status: ${bill.status || 'Completed'}
             return;
         }
 
-        console.log('🛒 Adding to cart:', product.name, 'Product Code:', product.productCode);
-        console.log('📦 Available promotions:', promotions.length);
-        console.log('🔍 All promotions:', promotions);
-
         // Find active promotion for this product from promotions list
         const activePromotion = promotions.find(promo => 
             promo.productCode === product.productCode &&
             isDiscountActive(promo.discountStartDate, promo.discountEndDate)
         );
 
-        console.log('🎯 Active promotion found:', activePromotion);
-
         // Check if product has discount in its own data (fallback)
         const productHasDiscount = product.discountPercentage > 0 && 
             isDiscountActive(product.discountStartDate, product.discountEndDate);
 
-        console.log('💰 Product has discount:', productHasDiscount, 'Discount %:', product.discountPercentage);
-
         // Use promotion discount or product discount
         const discountPercentage = activePromotion?.discountPercentage || 
             (productHasDiscount ? product.discountPercentage : 0);
-        
-        console.log('✅ Final discount percentage:', discountPercentage);
         
         const hasActiveDiscount = discountPercentage > 0;
 
@@ -247,11 +236,6 @@ Status: ${bill.status || 'Completed'}
                 discountApplied: hasActiveDiscount ? discountPercentage : 0,
                 promotionType: activePromotion?.type || null
             };
-            console.log('🎁 Created cart item:', cartItem);
-            console.log('   Original Price:', product.unitPrice);
-            console.log('   Final Price:', finalPrice);
-            console.log('   Discount Applied:', hasActiveDiscount ? discountPercentage : 0);
-            
             setCart([...cart, cartItem]);
             // Decrease shelf quantity in products state
             setProducts(products.map(p =>
@@ -1403,14 +1387,6 @@ function CheckoutModal({ cart, total, onClose, onSuccess }) {
     const [error, setError] = useState("");
     const [paymentMethod, setPaymentMethod] = useState("cash");
     const [amountPaid, setAmountPaid] = useState("");
-
-    console.log('🧾 Checkout Modal - Cart Items:', cart);
-    cart.forEach((item, index) => {
-        console.log(`   Item ${index + 1}: ${item.name}`);
-        console.log(`      Original Price: ${item.originalPrice}`);
-        console.log(`      Final Price: ${item.finalPrice}`);
-        console.log(`      Discount Applied: ${item.discountApplied}%`);
-    });
 
     const change = amountPaid ? Number(amountPaid) - total : 0;
     
