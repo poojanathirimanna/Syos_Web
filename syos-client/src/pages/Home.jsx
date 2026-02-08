@@ -23,6 +23,20 @@ export default function Home() {
         })();
     }, [nav]);
 
+    // Handle customer redirect - must be before any conditional returns
+    useEffect(() => {
+        if (!loading && user) {
+            const roleId = user?.role_id || user?.roleId;
+            if (roleId === 3 || roleId === 4) {
+                console.log("📤 Home.jsx: Redirecting customer to products page");
+                // Small delay to ensure session is fully established
+                setTimeout(() => {
+                    nav("/customer/products", { replace: true });
+                }, 100);
+            }
+        }
+    }, [user, loading, nav]);
+
     const onLogout = async () => {
         console.log("🚪 Home.jsx: Logout initiated");
         try {
@@ -87,17 +101,12 @@ export default function Home() {
         return <CashierDashboard user={user} onLogout={onLogout} />;
     }
 
-    // Customer Dashboard (role_id = 3 or 4) - Landing/Home Page
+    // Customer Dashboard (role_id = 3 or 4) - Handled by useEffect redirect
     if (roleId === 3 || roleId === 4) {
-        console.log("📤 Home.jsx: Passing to CustomerDashboard:", { 
-            user: user?.username, 
-            hasOnLogout: !!onLogout 
-        });
-        return <CustomerDashboard user={user} onLogout={onLogout} />;
+        return null;
     }
 
-    // Fallback for unknown roles - redirect to login
-    setTimeout(() => nav("/login"), 0);  // Use setTimeout to avoid setState during render
+    // Fallback for unknown roles
     return (
         <div style={{
             display: 'flex',

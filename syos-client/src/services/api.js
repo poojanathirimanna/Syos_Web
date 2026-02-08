@@ -449,3 +449,348 @@ export async function apiGetProductBatches(productCode) {
 
     return await parseJsonSafe(res);
 }
+
+/* =========================
+   CUSTOMER SHOPPING APIs
+   ========================= */
+
+// GET CUSTOMER PRODUCTS (with discounts applied)
+export async function apiGetCustomerProducts(params = {}) {
+    try {
+        // Build query string from params
+        const queryParams = new URLSearchParams();
+        if (params.category) queryParams.append('category', params.category);
+        if (params.search) queryParams.append('search', params.search);
+        if (params.minPrice) queryParams.append('minPrice', params.minPrice);
+        if (params.maxPrice) queryParams.append('maxPrice', params.maxPrice);
+        if (params.sortBy) queryParams.append('sortBy', params.sortBy);
+        if (params.page) queryParams.append('page', params.page);
+        if (params.limit) queryParams.append('limit', params.limit);
+        
+        const queryString = queryParams.toString();
+        const url = `${BASE_URL}/api/customer/products${queryString ? '?' + queryString : ''}`;
+        
+        const res = await fetch(url, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// GET CUSTOMER PRODUCT DETAILS
+export async function apiGetCustomerProduct(productCode) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/products/${productCode}`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// GET CUSTOMER CATEGORIES
+export async function apiGetCustomerCategories() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/categories`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+/* =========================
+   SHOPPING CART APIs
+   ========================= */
+
+// GET CART
+export async function apiGetCart() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/cart`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: { items: [], subtotal: 0, totalDiscount: 0, total: 0 } };
+    }
+}
+
+// ADD TO CART
+export async function apiAddToCart(productCode, quantity = 1) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/cart`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ productCode, quantity }),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// UPDATE CART ITEM
+export async function apiUpdateCartItem(cartId, quantity) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/cart/${cartId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ quantity }),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// REMOVE CART ITEM
+export async function apiRemoveCartItem(cartId) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/cart/${cartId}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// CLEAR CART
+export async function apiClearCart() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/cart`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+/* =========================
+   CUSTOMER CHECKOUT & ORDERS APIs
+   ========================= */
+
+// CHECKOUT (Place Order)
+export async function apiCheckout(orderData) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/checkout`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(orderData),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// GET CUSTOMER ORDERS
+export async function apiGetCustomerOrders() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/orders`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// GET ORDER DETAILS
+export async function apiGetOrderDetails(billNumber) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/orders/${billNumber}`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// CANCEL ORDER
+export async function apiCancelOrder(billNumber) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/orders/${billNumber}/cancel`, {
+            method: "PUT",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+/* =========================
+   WISHLIST APIs
+   ========================= */
+
+// GET WISHLIST
+export async function apiGetWishlist() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/wishlist`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// ADD TO WISHLIST
+export async function apiAddToWishlist(productCode) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/wishlist`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify({ productCode }),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// REMOVE FROM WISHLIST
+export async function apiRemoveFromWishlist(productCode) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/wishlist/${productCode}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+/* =========================
+   ADDRESS MANAGEMENT APIs
+   ========================= */
+
+// GET ADDRESSES
+export async function apiGetAddresses() {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/addresses`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// ADD ADDRESS
+export async function apiAddAddress(addressData) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/addresses`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(addressData),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// UPDATE ADDRESS
+export async function apiUpdateAddress(addressId, addressData) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/addresses/${addressId}`, {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(addressData),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+// DELETE ADDRESS
+export async function apiDeleteAddress(addressId) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/addresses/${addressId}`, {
+            method: "DELETE",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}
+
+/* =========================
+   PRODUCT REVIEWS APIs
+   ========================= */
+
+// GET PRODUCT REVIEWS
+export async function apiGetProductReviews(productCode) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/reviews/${productCode}`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message, data: [], averageRating: 0, totalReviews: 0 };
+    }
+}
+
+// ADD PRODUCT REVIEW
+export async function apiAddProductReview(reviewData) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/customer/reviews`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            credentials: "include",
+            body: JSON.stringify(reviewData),
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
+}

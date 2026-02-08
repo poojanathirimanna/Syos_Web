@@ -16,24 +16,23 @@ public class Product {
     private BigDecimal unitPrice;
     private String imageUrl;
     private Integer categoryId;
-
-    // 🆕 NEW - Discount fields
     private BigDecimal discountPercentage;
     private LocalDate discountStartDate;
     private LocalDate discountEndDate;
-
     private int shelfQuantity;
     private int warehouseQuantity;
     private int websiteQuantity;
     private ProductStatus status;
     private LocalDateTime createdAt;
     private LocalDateTime updatedAt;
+    private boolean isDeleted;  // ✅ Already exists
 
     // Default constructor
     public Product() {
-        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW
+        this.discountPercentage = BigDecimal.ZERO;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.isDeleted = false;  // 🆕 ADD THIS
     }
 
     // Constructor with essential fields
@@ -43,18 +42,19 @@ public class Product {
         this.unitPrice = unitPrice;
         this.imageUrl = null;
         this.categoryId = null;
-        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW
-        this.discountStartDate = null;              // 🆕 NEW
-        this.discountEndDate = null;                // 🆕 NEW
+        this.discountPercentage = BigDecimal.ZERO;
+        this.discountStartDate = null;
+        this.discountEndDate = null;
         this.shelfQuantity = 0;
         this.warehouseQuantity = 0;
         this.websiteQuantity = 0;
         this.status = ProductStatus.OUT_OF_STOCK;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.isDeleted = false;  // 🆕 ADD THIS
     }
 
-    // Full constructor
+    // Full constructor (existing)
     public Product(String productCode, String name, BigDecimal unitPrice, String imageUrl,
                    Integer categoryId, int shelfQuantity, int warehouseQuantity, int websiteQuantity) {
         this.productCode = productCode;
@@ -62,18 +62,41 @@ public class Product {
         this.unitPrice = unitPrice;
         this.imageUrl = imageUrl;
         this.categoryId = categoryId;
-        this.discountPercentage = BigDecimal.ZERO;  // 🆕 NEW
-        this.discountStartDate = null;              // 🆕 NEW
-        this.discountEndDate = null;                // 🆕 NEW
+        this.discountPercentage = BigDecimal.ZERO;
+        this.discountStartDate = null;
+        this.discountEndDate = null;
         this.shelfQuantity = shelfQuantity;
         this.warehouseQuantity = warehouseQuantity;
         this.websiteQuantity = websiteQuantity;
         this.status = calculateStatus();
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
+        this.isDeleted = false;  // 🆕 ADD THIS
     }
 
-    // 🆕 NEW - Check if product has active discount
+    // 🆕 NEW - Full constructor with all fields (for ProductDao)
+    public Product(String productCode, String name, BigDecimal unitPrice, String imageUrl,
+                   Integer categoryId, int shelfQuantity, int warehouseQuantity, int websiteQuantity,
+                   BigDecimal discountPercentage, LocalDate discountStartDate, LocalDate discountEndDate,
+                   boolean isDeleted) {
+        this.productCode = productCode;
+        this.name = name;
+        this.unitPrice = unitPrice;
+        this.imageUrl = imageUrl;
+        this.categoryId = categoryId;
+        this.discountPercentage = discountPercentage != null ? discountPercentage : BigDecimal.ZERO;
+        this.discountStartDate = discountStartDate;
+        this.discountEndDate = discountEndDate;
+        this.shelfQuantity = shelfQuantity;
+        this.warehouseQuantity = warehouseQuantity;
+        this.websiteQuantity = websiteQuantity;
+        this.status = calculateStatus();
+        this.createdAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+        this.isDeleted = isDeleted;
+    }
+
+    // Check if product has active discount
     public boolean hasActiveDiscount() {
         if (discountPercentage == null || discountPercentage.compareTo(BigDecimal.ZERO) == 0) {
             return false;
@@ -93,7 +116,7 @@ public class Product {
         return afterStart && beforeEnd;
     }
 
-    // 🆕 NEW - Calculate discounted price
+    // Calculate discounted price
     public BigDecimal getDiscountedPrice() {
         if (!hasActiveDiscount()) {
             return unitPrice;
@@ -139,7 +162,6 @@ public class Product {
         if (categoryId != null && categoryId <= 0) {
             throw new IllegalArgumentException("Invalid category ID");
         }
-        // 🆕 NEW - Validate discount
         if (discountPercentage != null && (discountPercentage.compareTo(BigDecimal.ZERO) < 0 ||
                 discountPercentage.compareTo(new BigDecimal("100")) > 0)) {
             throw new IllegalArgumentException("Discount percentage must be between 0 and 100");
@@ -192,7 +214,6 @@ public class Product {
         this.updatedAt = LocalDateTime.now();
     }
 
-    // 🆕 NEW - Discount getters and setters
     public BigDecimal getDiscountPercentage() {
         return discountPercentage;
     }
@@ -273,6 +294,16 @@ public class Product {
         this.updatedAt = updatedAt;
     }
 
+    // 🆕 NEW - isDeleted getter and setter
+    public boolean isDeleted() {
+        return isDeleted;
+    }
+
+    public void setDeleted(boolean deleted) {
+        isDeleted = deleted;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     @Override
     public String toString() {
         return "Product{" +
@@ -286,6 +317,7 @@ public class Product {
                 ", warehouseQuantity=" + warehouseQuantity +
                 ", websiteQuantity=" + websiteQuantity +
                 ", status=" + status +
+                ", isDeleted=" + isDeleted +
                 '}';
     }
 }

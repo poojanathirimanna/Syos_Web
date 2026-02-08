@@ -86,6 +86,7 @@ public class ApiBillsServlet extends HttpServlet {
             CompletableFuture<BillQueueResponse> future =
                     BillQueueService.getInstance().submitBillRequest(request, userId);
 
+
             // Wait for result with timeout (30 seconds)
             BillQueueResponse queueResponse = future.get(30, TimeUnit.SECONDS);
 

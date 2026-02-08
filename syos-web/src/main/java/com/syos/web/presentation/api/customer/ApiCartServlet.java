@@ -46,14 +46,14 @@ public class ApiCartServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute("user_id") == null) {
+        if (session == null || session.getAttribute("username") == null) {
             ApiResponse<Object> error = ApiResponse.error("Unauthorized - Please login");
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             resp.getWriter().write(gson.toJson(error));
             return;
         }
 
-        String userId = (String) session.getAttribute("user_id");
+        String userId = (String) session.getAttribute("username");
 
         try {
             CartResponseDTO cart = getCartUseCase.execute(userId);
@@ -81,14 +81,14 @@ public class ApiCartServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute("user_id") == null) {
+        if (session == null || session.getAttribute("username") == null) {
             ApiResponse<Object> error = ApiResponse.error("Unauthorized - Please login");
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             resp.getWriter().write(gson.toJson(error));
             return;
         }
 
-        String userId = (String) session.getAttribute("user_id");
+        String userId = (String) session.getAttribute("username");
 
         try {
             String requestBody = readRequestBody(req);
@@ -124,14 +124,14 @@ public class ApiCartServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute("user_id") == null) {
+        if (session == null || session.getAttribute("username") == null) {
             ApiResponse<Object> error = ApiResponse.error("Unauthorized - Please login");
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             resp.getWriter().write(gson.toJson(error));
             return;
         }
 
-        String userId = (String) session.getAttribute("user_id");
+        String userId = (String) session.getAttribute("username");
 
         try {
             String pathInfo = req.getPathInfo();
@@ -171,14 +171,14 @@ public class ApiCartServlet extends HttpServlet {
         resp.setCharacterEncoding("UTF-8");
 
         HttpSession session = req.getSession(false);
-        if (session == null || session.getAttribute("user_id") == null) {
+        if (session == null || session.getAttribute("username") == null) {
             ApiResponse<Object> error = ApiResponse.error("Unauthorized - Please login");
             resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
             resp.getWriter().write(gson.toJson(error));
             return;
         }
 
-        String userId = (String) session.getAttribute("user_id");
+        String userId = (String) session.getAttribute("username");
 
         try {
             String pathInfo = req.getPathInfo();

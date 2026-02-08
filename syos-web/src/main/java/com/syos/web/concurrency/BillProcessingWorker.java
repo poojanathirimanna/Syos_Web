@@ -7,6 +7,7 @@ import com.syos.web.infrastructure.persistence.dao.ProductDao;
 /**
  * Worker thread that processes bill requests from the queue
  * Demonstrates explicit multithreading for assignment
+ * 🆕 NOW PROCESSES BOTH CASHIER BILLS AND CUSTOMER ORDERS
  */
 public class BillProcessingWorker implements Runnable {
 
@@ -36,15 +37,19 @@ public class BillProcessingWorker implements Runnable {
                 // Get next request from queue (blocks if empty)
                 BillRequest request = queue.dequeue();
 
-                System.out.println("⚙️ [" + workerName + "] Processing request: " + request.getRequestId());
+                // 🆕 Log which type of request we're processing
+                String requestType = request.getUserType();
+                System.out.println("⚙️ [" + workerName + "] Processing " + requestType + " request: " +
+                        request.getRequestId());
 
                 long startTime = System.currentTimeMillis();
 
                 try {
-                    // Process the bill
+                    // 🆕 UPDATED - Pass userType to use case
                     var billDTO = createBillUseCase.execute(
                             request.getBillRequest(),
-                            request.getUserId()
+                            request.getUserId(),
+                            request.getUserType()  // 🆕 NEW parameter
                     );
 
                     long processingTime = System.currentTimeMillis() - startTime;
@@ -58,7 +63,8 @@ public class BillProcessingWorker implements Runnable {
 
                     request.complete(response);
 
-                    System.out.println("✅ [" + workerName + "] Request completed: " +
+                    // 🆕 Enhanced logging
+                    System.out.println("✅ [" + workerName + "] " + requestType + " request completed: " +
                             request.getRequestId() + " (" + processingTime + "ms)");
 
                 } catch (Exception e) {
@@ -72,7 +78,7 @@ public class BillProcessingWorker implements Runnable {
 
                     request.complete(response);
 
-                    System.err.println("❌ [" + workerName + "] Request failed: " +
+                    System.err.println("❌ [" + workerName + "] " + requestType + " request failed: " +
                             request.getRequestId() + " - " + e.getMessage());
                 }
 

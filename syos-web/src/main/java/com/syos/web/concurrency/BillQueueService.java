@@ -9,6 +9,7 @@ import java.util.concurrent.CompletableFuture;
 /**
  * Service that manages the bill processing queue and worker threads
  * Singleton pattern for application-wide access
+ * 🆕 NOW HANDLES BOTH CASHIER BILLS AND CUSTOMER ORDERS
  */
 public class BillQueueService {
 
@@ -34,8 +35,8 @@ public class BillQueueService {
     public static synchronized BillQueueService getInstance() {
         if (instance == null) {
             instance = new BillQueueService(1000, 20);
-            // Queue size: 500 requests
-            // Workers: 10 threads
+            // Queue size: 1000 requests (handles both cashier + customer)
+            // Workers: 20 threads (processes both types)
         }
         return instance;
     }
@@ -54,19 +55,28 @@ public class BillQueueService {
     }
 
     /**
-     * Submit a bill request for processing
+     * Submit a bill request for processing (CASHIER - default)
      * Returns a CompletableFuture that will be completed when processing is done
      */
     public CompletableFuture<BillQueueResponse> submitBillRequest(
             CreateBillRequest billRequest, String userId) {
+        return submitBillRequest(billRequest, userId, "CASHIER");
+    }
 
-        BillRequest request = new BillRequest(billRequest, userId);
+    /**
+     * 🆕 Submit a bill request for processing (GENERIC - supports both CASHIER and CUSTOMER)
+     * Returns a CompletableFuture that will be completed when processing is done
+     */
+    public CompletableFuture<BillQueueResponse> submitBillRequest(
+            CreateBillRequest billRequest, String userId, String userType) {
+
+        BillRequest request = new BillRequest(billRequest, userId, userType);
 
         try {
             // Add to queue (blocks if queue is full)
             queue.enqueue(request);
 
-            System.out.println("📨 Request submitted: " + request.getRequestId() +
+            System.out.println("📨 [" + userType + "] Request submitted: " + request.getRequestId() +
                     " | Queue size: " + queue.size() + "/" + (queue.size() + queue.remainingCapacity()));
 
             return request.getFuture();

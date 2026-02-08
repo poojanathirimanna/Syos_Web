@@ -7,19 +7,23 @@ import java.util.concurrent.CompletableFuture;
 
 /**
  * Represents a bill creation request in the queue
+ * 🆕 NOW SUPPORTS BOTH CASHIER AND CUSTOMER REQUESTS
  */
 public class BillRequest {
 
     private final String requestId;
     private final CreateBillRequest billRequest;
     private final String userId;
+    private final String userType;  // 🆕 NEW: "CASHIER" or "CUSTOMER"
     private final long timestamp;
     private final CompletableFuture<BillQueueResponse> future;
 
-    public BillRequest(CreateBillRequest billRequest, String userId) {
+    // 🆕 UPDATED constructor with userType
+    public BillRequest(CreateBillRequest billRequest, String userId, String userType) {
         this.requestId = UUID.randomUUID().toString();
         this.billRequest = billRequest;
         this.userId = userId;
+        this.userType = userType;  // 🆕 NEW
         this.timestamp = System.currentTimeMillis();
         this.future = new CompletableFuture<>();
     }
@@ -35,6 +39,11 @@ public class BillRequest {
 
     public String getUserId() {
         return userId;
+    }
+
+    // 🆕 NEW getter
+    public String getUserType() {
+        return userType;
     }
 
     public long getTimestamp() {

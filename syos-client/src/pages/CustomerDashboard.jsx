@@ -120,27 +120,27 @@ export default function CustomerDashboard({ user, onLogout }) {
                 </div>
 
                 <div className="dashboard-content">
-                    <div className="dashboard-card">
+                    <div className="dashboard-card" onClick={() => window.location.href = '/customer/products'}>
                         <h3 className="card-title">🛒 Browse Products</h3>
                         <p className="card-description">Explore our product catalog</p>
                     </div>
 
-                    <div className="dashboard-card">
+                    <div className="dashboard-card" onClick={() => window.location.href = '/customer/orders'}>
                         <h3 className="card-title">📦 My Orders</h3>
                         <p className="card-description">View your order history</p>
                     </div>
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">❤️ Favorites</h3>
+                    <div className="dashboard-card" onClick={() => window.location.href = '/customer/wishlist'}>
+                        <h3 className="card-title">❤️ Wishlist</h3>
                         <p className="card-description">Your saved favorite items</p>
                     </div>
 
-                    <div className="dashboard-card">
-                        <h3 className="card-title">👤 Profile</h3>
-                        <p className="card-description">Manage your account information</p>
+                    <div className="dashboard-card" onClick={() => window.location.href = '/customer/cart'}>
+                        <h3 className="card-title">🛒 Shopping Cart</h3>
+                        <p className="card-description">View items in your cart</p>
                     </div>
 
-                    <div className="dashboard-card">
+                    <div className="dashboard-card" onClick={() => window.location.href = '/customer/products'}>
                         <h3 className="card-title">🎁 Promotions</h3>
                         <p className="card-description">View special offers and deals</p>
                     </div>
