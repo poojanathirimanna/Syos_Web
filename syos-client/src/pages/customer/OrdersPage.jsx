@@ -283,8 +283,8 @@ export default function OrdersPage({ user, onLogout }) {
                                                 })}
                                             </div>
                                         </div>
-                                        <div className={`order-status-badge ${getStatusBadgeClass('DELIVERED')}`}>
-                                            {getStatusIcon('DELIVERED')} DELIVERED
+                                        <div className={`order-status-badge ${getStatusBadgeClass(order.orderStatus || order.deliveryStatus || 'PENDING')}`}>
+                                            {getStatusIcon(order.orderStatus || order.deliveryStatus || 'PENDING')} {order.orderStatus || order.deliveryStatus || 'PENDING'}
                                         </div>
                                     </div>
 
@@ -297,8 +297,11 @@ export default function OrdersPage({ user, onLogout }) {
                                         </div>
                                         <div className="detail-item">
                                             <div className="detail-label">Payment Status</div>
-                                            <div className="detail-value" style={{ color: '#10b981', fontWeight: '600' }}>
-                                                ✓ SUCCESS
+                                            <div className="detail-value" style={{ 
+                                                color: order.paymentStatus === 'SUCCESS' || order.paymentStatus === 'PAID' ? '#10b981' : '#ef4444', 
+                                                fontWeight: '600' 
+                                            }}>
+                                                {order.paymentStatus === 'SUCCESS' || order.paymentStatus === 'PAID' ? '✓' : '✗'} {order.paymentStatus || 'PENDING'}
                                             </div>
                                         </div>
                                         {order.estimatedDeliveryDate && (
