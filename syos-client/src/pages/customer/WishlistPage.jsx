@@ -2,6 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CustomerHeader from "../../components/customer/CustomerHeader";
 import { apiGetWishlist, apiRemoveFromWishlist, apiAddToCart } from "../../services/api";
+import syosLogo from "../../assets/syos-logo.png";
 
 export default function WishlistPage({ user, onLogout }) {
     const [wishlist, setWishlist] = useState([]);
@@ -35,7 +36,7 @@ export default function WishlistPage({ user, onLogout }) {
     const handleAddToCart = async (product) => {
         const result = await apiAddToCart(product.productCode, 1);
         if (result.success) {
-            showNotification(`${product.productName} added to cart!`, "success");
+            showNotification(`${product.name || product.productName} added to cart!`, "success");
         } else {
             showNotification(result.message || "Failed to add to cart", "error");
         }
@@ -192,8 +193,11 @@ export default function WishlistPage({ user, onLogout }) {
                     border-radius: 12px;
                 }
                 .empty-icon {
-                    font-size: 64px;
-                    margin-bottom: 16px;
+                    width: 180px;
+                    height: auto;
+                    margin: 0 auto 24px;
+                    display: block;
+                    filter: drop-shadow(0 4px 12px rgba(34, 197, 94, 0.2));
                 }
                 .empty-title {
                     font-size: 24px;
@@ -257,7 +261,7 @@ export default function WishlistPage({ user, onLogout }) {
                         </div>
                     ) : wishlist.length === 0 ? (
                         <div className="empty-wishlist">
-                            <div className="empty-icon">❤️</div>
+                            <img src={syosLogo} alt="SYOS" className="empty-icon" />
                             <h2 className="empty-title">Your wishlist is empty</h2>
                             <p className="empty-text">
                                 Save your favorite items here for later!
@@ -279,11 +283,11 @@ export default function WishlistPage({ user, onLogout }) {
                                     >
                                         <img 
                                             src={item.imageUrl || "/placeholder-product.jpg"}
-                                            alt={item.productName}
+                                            alt={item.name || item.productName}
                                             className="product-image"
                                             onError={(e) => e.target.src = "/placeholder-product.jpg"}
                                         />
-                                        {item.hasDiscount && item.inStock && (
+                                        {item.discountPercentage > 0 && item.inStock && (
                                             <div className="discount-badge">
                                                 {item.discountPercentage}% OFF
                                             </div>
@@ -296,23 +300,27 @@ export default function WishlistPage({ user, onLogout }) {
                                     </div>
 
                                     <div className="card-content">
-                                        <h3 className="product-name">{item.productName}</h3>
+                                        <h3 className="product-name">{item.name || item.productName}</h3>
                                         
                                         <div className="product-price">
-                                            LKR {(item.hasDiscount ? item.discountedPrice : item.unitPrice)?.toFixed(2)}
-                                            {item.hasDiscount && (
+                                            LKR {(item.discountPercentage > 0 ? item.discountedPrice : item.originalPrice)?.toFixed(2)}
+                                            {item.discountPercentage > 0 && (
                                                 <span className="original-price">
-                                                    LKR {item.unitPrice?.toFixed(2)}
+                                                    LKR {item.originalPrice?.toFixed(2)}
                                                 </span>
                                             )}
                                         </div>
 
                                         <div className="added-date">
-                                            Added {new Date(item.addedDate).toLocaleDateString('en-US', {
-                                                month: 'short',
-                                                day: 'numeric',
-                                                year: 'numeric'
-                                            })}
+                                            {item.addedDate ? (
+                                                <>Added {new Date(item.addedDate).toLocaleDateString('en-US', {
+                                                    month: 'short',
+                                                    day: 'numeric',
+                                                    year: 'numeric'
+                                                })}</>
+                                            ) : (
+                                                <>In Wishlist</>
+                                            )}
                                         </div>
 
                                         <div className="card-actions">
@@ -325,7 +333,7 @@ export default function WishlistPage({ user, onLogout }) {
                                             </button>
                                             <button 
                                                 className="btn btn-remove"
-                                                onClick={() => handleRemove(item.productCode, item.productName)}
+                                                onClick={() => handleRemove(item.productCode, item.name || item.productName)}
                                             >
                                                 🗑️
                                             </button>

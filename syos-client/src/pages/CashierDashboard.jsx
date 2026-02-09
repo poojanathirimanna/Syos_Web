@@ -1405,6 +1405,7 @@ function CheckoutModal({ cart, total, onClose, onSuccess }) {
 
     const handleSubmit = async (e) => {
         e.preventDefault();
+        console.log('🛒 Checkout: handleSubmit called');
         setError("");
 
         if (paymentMethod === "cash" && Number(amountPaid) < total) {
@@ -1424,16 +1425,23 @@ function CheckoutModal({ cart, total, onClose, onSuccess }) {
             change: paymentMethod === "cash" ? change : 0
         };
 
+        console.log('💰 Checkout: Bill data prepared:', billData);
+
         try {
             setLoading(true);
+            console.log('📤 Checkout: Calling apiCreateBill...');
             const response = await apiCreateBill(billData);
+            console.log('📥 Checkout: API response:', response);
 
             if (response.success) {
+                console.log('✅ Checkout: Bill created successfully!', response.data);
                 onSuccess(response.data?.billNumber, change);
             } else {
+                console.error('❌ Checkout: Bill creation failed:', response.message);
                 setError(response.message || "Failed to create bill");
             }
         } catch (err) {
+            console.error('💥 Checkout: Exception caught:', err);
             setError("Error creating bill: " + err.message);
         } finally {
             setLoading(false);

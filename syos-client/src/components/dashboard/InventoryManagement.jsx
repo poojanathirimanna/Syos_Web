@@ -976,9 +976,23 @@ function TransferStockModal({ onClose, onSuccess, setSuccess, setError }) {
             location: formData.fromLocation
         });
 
+        console.log('🔍 Checking available quantity for:', formData.productCode, 'at', formData.fromLocation);
+        console.log('📊 Inventory response:', response);
+
         if (response.success) {
-            const total = response.data.inventoryLocations?.reduce((sum, item) => sum + item.quantity, 0) || 0;
+            // Filter inventory items to only include the selected product
+            const productItems = response.data.inventoryLocations?.filter(
+                item => item.productCode === formData.productCode && item.location === formData.fromLocation
+            ) || [];
+            
+            const total = productItems.reduce((sum, item) => sum + item.quantity, 0);
+            
+            console.log('🔎 Filtered items for', formData.productCode, ':', productItems);
+            console.log('✅ Total available quantity for', formData.productCode, ':', total);
             setAvailableQty(total);
+        } else {
+            console.error('❌ Failed to get inventory:', response.message);
+            setAvailableQty(0);
         }
     };
 
@@ -1001,10 +1015,12 @@ function TransferStockModal({ onClose, onSuccess, setSuccess, setError }) {
             return;
         }
 
-        if (availableQty !== null && parseInt(formData.quantity) > availableQty) {
-            setError(`Insufficient stock. Only ${availableQty} units available in ${formData.fromLocation}`);
-            return;
-        }
+        // Refresh available quantity right before submitting to get latest data
+        console.log('🔄 Refreshing inventory before transfer...');
+        await checkAvailableQuantity();
+        
+        // Wait a moment for state to update
+        await new Promise(resolve => setTimeout(resolve, 100));
 
         try {
             setLoading(true);
@@ -1015,7 +1031,12 @@ function TransferStockModal({ onClose, onSuccess, setSuccess, setError }) {
                 toLocation: formData.toLocation
             };
 
+            console.log('📦 Transfer: Submitting transfer request:', submitData);
+            console.log('📊 Transfer: Frontend shows available quantity:', availableQty);
+            
             const response = await apiTransferStock(submitData);
+            
+            console.log('📥 Transfer: Response from backend:', response);
 
             if (response.success) {
                 const batchCount = response.data.batchesUsed?.length || 0;
@@ -1026,9 +1047,13 @@ function TransferStockModal({ onClose, onSuccess, setSuccess, setError }) {
                 setTimeout(() => setSuccess(""), 5000);
                 onSuccess();
             } else {
-                setError(response.message || "Failed to transfer stock");
+                console.error('❌ Transfer failed:', response.message);
+                // Refresh to show actual available quantity after error
+                await checkAvailableQuantity();
+                setError(response.message + " (Quantity refreshed - please check available stock)");
             }
         } catch (err) {
+            console.error('💥 Transfer exception:', err);
             setError("Error transferring stock: " + err.message);
         } finally {
             setLoading(false);
@@ -1101,6 +1126,22 @@ function TransferStockModal({ onClose, onSuccess, setSuccess, setError }) {
                     {availableQty !== null && (
                         <div className="info-box">
                             📦 Available in {formData.fromLocation}: <strong>{availableQty} units</strong>
+                            <button 
+                                type="button" 
+                                onClick={checkAvailableQuantity}
+                                style={{
+                                    marginLeft: '12px',
+                                    padding: '4px 12px',
+                                    fontSize: '12px',
+                                    background: '#52B788',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '4px',
+                                    cursor: 'pointer'
+                                }}
+                            >
+                                🔄 Refresh
+                            </button>
                         </div>
                     )}
 

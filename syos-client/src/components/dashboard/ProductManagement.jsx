@@ -856,7 +856,7 @@ export default function ProductManagement() {
                                     </div>
 
                                     <div className="form-group">
-                                        <label className="form-label">Unit Price ($) *</label>
+                                        <label className="form-label">Unit Price (LKR) *</label>
                                         <input
                                             type="number"
                                             step="0.01"

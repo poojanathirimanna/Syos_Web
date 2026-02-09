@@ -43,8 +43,8 @@ public class AddToCartUseCase {
             throw new IllegalArgumentException("Product is no longer available");
         }
 
-        // Check stock availability
-        int availableStock = product.getShelfQuantity(); // Only SHELF stock for customers
+        // Check stock availability - USE WEBSITE QUANTITY FOR CUSTOMERS!
+        int availableStock = product.getWebsiteQuantity();
         if (availableStock <= 0) {
             throw new IllegalArgumentException("Product is out of stock");
         }

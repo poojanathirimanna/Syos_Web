@@ -169,10 +169,10 @@ public class ApiCustomerProductsServlet extends HttpServlet {
             dto.put("averageRating", Math.round(avgRating * 10.0) / 10.0); // Round to 1 decimal
             dto.put("reviewCount", reviewCount);
 
-            // Stock info
-            boolean inStock = product.getShelfQuantity() > 0;
+            // Stock info - USE WEBSITE QUANTITY FOR CUSTOMERS!
+            boolean inStock = product.getWebsiteQuantity() > 0;
             dto.put("inStock", inStock);
-            dto.put("availableQuantity", product.getShelfQuantity());
+            dto.put("availableQuantity", product.getWebsiteQuantity());
 
             productDTOs.add(dto);
         }
@@ -240,9 +240,10 @@ public class ApiCustomerProductsServlet extends HttpServlet {
         productDetails.put("averageRating", Math.round(avgRating * 10.0) / 10.0);
         productDetails.put("reviewCount", reviewCount);
 
-        boolean inStock = product.getShelfQuantity() > 0;
+        // Stock info - USE WEBSITE QUANTITY FOR CUSTOMERS!
+        boolean inStock = product.getWebsiteQuantity() > 0;
         productDetails.put("inStock", inStock);
-        productDetails.put("availableQuantity", product.getShelfQuantity());
+        productDetails.put("availableQuantity", product.getWebsiteQuantity());
 
         productDetails.put("reviews", reviews);
 

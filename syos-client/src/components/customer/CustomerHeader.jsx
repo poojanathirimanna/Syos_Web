@@ -1,11 +1,39 @@
 import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { apiGetCart } from "../../services/api";
-import syosLogo from "../../assets/syos-logo-text.png";
+import { apiGetCart, apiMe } from "../../services/api";
+import syosLogo from "../../assets/syos-logo.png";
 
-export default function CustomerHeader({ user, onLogout, cartCount: propCartCount }) {
+export default function CustomerHeader({ user: propUser, onLogout, cartCount: propCartCount }) {
     const [cartCount, setCartCount] = useState(propCartCount || 0);
+    const [user, setUser] = useState(propUser);
+    const [isVisible, setIsVisible] = useState(true);
+    const [lastScrollY, setLastScrollY] = useState(0);
     const navigate = useNavigate();
+
+    // Fetch user data if not provided as prop
+    useEffect(() => {
+        const fetchUserData = async () => {
+            if (!user) {
+                try {
+                    const result = await apiMe();
+                    if (result?.loggedIn) {
+                        setUser(result);
+                    }
+                } catch (error) {
+                    console.error("Failed to fetch user data:", error);
+                }
+            }
+        };
+        
+        fetchUserData();
+    }, []);
+
+    // Update local user state when prop changes
+    useEffect(() => {
+        if (propUser) {
+            setUser(propUser);
+        }
+    }, [propUser]);
 
     useEffect(() => {
         // Fetch cart count on mount
@@ -36,6 +64,26 @@ export default function CustomerHeader({ user, onLogout, cartCount: propCartCoun
         }
     }, [propCartCount]);
 
+    // Handle scroll to hide/show header
+    useEffect(() => {
+        const handleScroll = () => {
+            const currentScrollY = window.scrollY;
+            
+            if (currentScrollY > lastScrollY && currentScrollY > 100) {
+                // Scrolling down & past threshold
+                setIsVisible(false);
+            } else {
+                // Scrolling up
+                setIsVisible(true);
+            }
+            
+            setLastScrollY(currentScrollY);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        return () => window.removeEventListener('scroll', handleScroll);
+    }, [lastScrollY]);
+
     return (
         <>
             <style>{`
@@ -44,11 +92,18 @@ export default function CustomerHeader({ user, onLogout, cartCount: propCartCoun
                     box-shadow: 0 4px 12px rgba(34, 197, 94, 0.3);
                     position: sticky;
                     top: 0;
+                    left: 0;
+                    right: 0;
                     z-index: 100;
+                    width: 100%;
+                    margin: 0;
+                    padding: 0;
+                    transition: transform 0.3s ease-in-out;
+                    transform: translateY(${isVisible ? '0' : '-100%'});
                 }
                 .header-container {
-                    max-width: 1400px;
-                    margin: 0 auto;
+                    max-width: 100%;
+                    margin: 0;
                     padding: 16px 20px;
                     display: flex;
                     justify-content: space-between;
@@ -59,12 +114,11 @@ export default function CustomerHeader({ user, onLogout, cartCount: propCartCoun
                     cursor: pointer;
                     display: flex;
                     align-items: center;
-                    height: 45px;
+                    height: 100px;
                 }
                 .header-logo img {
                     height: 100%;
                     width: auto;
-                    filter: brightness(0) invert(1);
                 }
                 .header-nav {
                     display: flex;

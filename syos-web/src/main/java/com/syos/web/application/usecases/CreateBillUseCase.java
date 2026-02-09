@@ -74,8 +74,10 @@ public class CreateBillUseCase {
                     throw new IllegalArgumentException("Product is no longer available: " + item.getProductCode());
                 }
 
-                // Check stock availability
-                int availableStock = product.getShelfQuantity();
+                // Check stock availability - USE WEBSITE for ONLINE, SHELF for IN_STORE
+                int availableStock = "ONLINE".equals(channel) ?
+                        product.getWebsiteQuantity() : product.getShelfQuantity();
+
                 if (availableStock < item.getQuantity()) {
                     throw new IllegalArgumentException(
                             "Insufficient stock for " + product.getName() +
@@ -186,15 +188,19 @@ public class CreateBillUseCase {
                         BigDecimal.ZERO
                 );
 
+                // Deduct from correct location based on channel
+                String deductionLocation = "ONLINE".equals(channel) ? "WEBSITE" : "SHELF";
+
                 int batchIdUsed = billDao.deductStockForSale(
                         requestItem.getProductCode(),
                         requestItem.getQuantity(),
                         billNumber,
-                        userId
+                        userId,
+                        deductionLocation
                 );
 
                 System.out.println("Product " + requestItem.getProductCode() +
-                        " deducted from batch_id: " + batchIdUsed);
+                        " deducted from " + deductionLocation + " batch_id: " + batchIdUsed);
             }
 
             BillDTO finalBill = billDao.getBillByNumber(billNumber);

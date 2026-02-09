@@ -83,6 +83,18 @@ export default function ProductsPage({ user, onLogout }) {
             // Backend returns: { success: true, data: { products: [...], pagination: {...} } }
             const productList = result?.data?.products || result?.data || [];
             
+            // Log apple001 specifically to debug
+            const appleProduct = productList.find(p => p.productCode === 'apple001');
+            if (appleProduct) {
+                console.log('🍎 Apple001 product details:', {
+                    availableQuantity: appleProduct.availableQuantity,
+                    inStock: appleProduct.inStock,
+                    name: appleProduct.name
+                });
+            } else {
+                console.log('🍎 Apple001 not found in product list');
+            }
+            
             if (result.success && Array.isArray(productList)) {
                 setProducts(productList);
                 setFilteredProducts(productList);

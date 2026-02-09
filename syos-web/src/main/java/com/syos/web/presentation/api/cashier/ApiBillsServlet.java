@@ -78,7 +78,13 @@ public class ApiBillsServlet extends HttpServlet {
         try {
             // Read request body
             String requestBody = readRequestBody(req);
+            System.out.println("📥 Received request body: " + requestBody);
+
             CreateBillRequest request = gson.fromJson(requestBody, CreateBillRequest.class);
+
+            System.out.println("🔍 Parsed request - PaymentMethod: " + request.getPaymentMethod() +
+                             ", Items: " + (request.getItems() != null ? request.getItems().size() : 0) +
+                             ", AmountPaid: " + request.getAmountPaid());
 
             System.out.println("📨 [" + Thread.currentThread().getName() + "] Submitting bill request to queue...");
 

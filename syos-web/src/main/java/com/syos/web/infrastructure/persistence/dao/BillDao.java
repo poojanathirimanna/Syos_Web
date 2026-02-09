@@ -531,28 +531,36 @@ public class BillDao {
     }
 
     /**
-     * Call stored procedure to deduct stock
+     * Call stored procedure to deduct stock (backward compatible - defaults to SHELF)
      */
     public int deductStockForSale(String productCode, int quantity, String billNumber, String userId) throws SQLException {
-        String sql = "{CALL deduct_stock_for_sale(?, ?, ?, ?, ?)}";
+        return deductStockForSale(productCode, quantity, billNumber, userId, "SHELF");
+    }
+
+    /**
+     * 🆕 Call stored procedure to deduct stock from specific location (SHELF or WEBSITE)
+     */
+    public int deductStockForSale(String productCode, int quantity, String billNumber, String userId, String location) throws SQLException {
+        String sql = "{CALL deduct_stock_for_sale_v2(?, ?, ?, ?, ?, ?)}";
 
         try (Connection conn = Db.getConnection();
              CallableStatement stmt = conn.prepareCall(sql)) {
 
             stmt.setString(1, productCode);
             stmt.setInt(2, quantity);
-            stmt.setString(3, billNumber);
-            stmt.setString(4, userId);
-            stmt.registerOutParameter(5, java.sql.Types.INTEGER);
+            stmt.setString(3, location);  // SHELF or WEBSITE
+            stmt.setString(4, billNumber);
+            stmt.setString(5, userId);
+            stmt.registerOutParameter(6, java.sql.Types.INTEGER);
 
             stmt.execute();
 
-            int batchIdUsed = stmt.getInt(5);
+            int batchIdUsed = stmt.getInt(6);
 
             return batchIdUsed;
 
         } catch (SQLException e) {
-            System.err.println("Error calling deduct_stock_for_sale: " + e.getMessage());
+            System.err.println("Error calling deduct_stock_for_sale_v2: " + e.getMessage());
             throw e;
         }
     }

@@ -246,6 +246,8 @@ export async function apiReceiveStock(data) {
 
 // TRANSFER STOCK
 export async function apiTransferStock(data) {
+    console.log('🔧 API: apiTransferStock called with:', data);
+    
     const res = await fetch(`${BASE_URL}/api/admin/inventory/transfer`, {
         method: "POST",
         headers: {
@@ -255,7 +257,12 @@ export async function apiTransferStock(data) {
         body: JSON.stringify(data),
     });
 
-    return await parseJsonSafe(res);
+    console.log('📡 API: Transfer response status:', res.status, res.statusText);
+    
+    const result = await parseJsonSafe(res);
+    console.log('📦 API: Transfer parsed response:', result);
+    
+    return result;
 }
 
 /* =========================
@@ -356,6 +363,8 @@ export async function apiGetBillDetails(billNumber) {
 
 // CREATE BILL (Cashier)
 export async function apiCreateBill(billData) {
+    console.log('🔧 API: apiCreateBill called with data:', billData);
+    
     const res = await fetch(`${BASE_URL}/api/cashier/bills`, {
         method: "POST",
         headers: {
@@ -365,7 +374,12 @@ export async function apiCreateBill(billData) {
         body: JSON.stringify(billData),
     });
 
-    return await parseJsonSafe(res);
+    console.log('📡 API: Response status:', res.status, res.statusText);
+    
+    const result = await parseJsonSafe(res);
+    console.log('📦 API: Parsed response:', result);
+    
+    return result;
 }
 
 /* =========================

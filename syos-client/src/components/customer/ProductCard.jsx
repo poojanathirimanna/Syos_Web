@@ -14,7 +14,6 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                     overflow: hidden;
                     box-shadow: 0 4px 12px rgba(0,0,0,0.08);
                     transition: all 0.3s ease;
-                    cursor: pointer;
                     height: 100%;
                     display: flex;
                     flex-direction: column;
@@ -58,21 +57,30 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                     position: absolute;
                     top: 10px;
                     right: 10px;
-                    background: white;
-                    border: none;
-                    width: 36px;
-                    height: 36px;
+                    background: rgba(255, 255, 255, 0.95);
+                    border: 2px solid #e5e7eb;
+                    width: 40px;
+                    height: 40px;
                     border-radius: 50%;
                     cursor: pointer;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    font-size: 18px;
-                    transition: transform 0.2s;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    transition: all 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+                    color: #6b7280;
                 }
                 .wishlist-btn:hover {
                     transform: scale(1.1);
+                    background: #fef2f2;
+                    border-color: #ef4444;
+                    color: #ef4444;
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+                }
+                .wishlist-btn svg {
+                    width: 22px;
+                    height: 22px;
+                    stroke-width: 2;
                 }
                 .product-details {
                     padding: 16px;
@@ -132,7 +140,7 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                     margin-top: auto;
                 }
                 .btn-add-cart {
-                    flex: 1;
+                    width: 100%;
                     background: linear-gradient(135deg, #22c55e 0%, #16a34a 100%);
                     color: white;
                     border: none;
@@ -153,23 +161,10 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                     box-shadow: none;
                     transform: none;
                 }
-                .btn-view-details {
-                    background: #f3f4f6;
-                    color: #22c55e;
-                    border: none;
-                    padding: 10px 16px;
-                    border-radius: 8px;
-                    font-weight: 600;
-                    cursor: pointer;
-                    transition: background 0.2s;
-                }
-                .btn-view-details:hover {
-                    background: #e5e7eb;
-                }
             `}</style>
 
             <div className="product-card">
-                <div className="product-image-container" onClick={onViewDetails}>
+                <div className="product-image-container">
                     <img 
                         src={product.imageUrl || "/placeholder-product.jpg"} 
                         alt={product.name}
@@ -194,7 +189,9 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                         }}
                         title="Add to Wishlist"
                     >
-                        ❤️
+                        <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12z" />
+                        </svg>
                     </button>
                 </div>
 
@@ -235,12 +232,6 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                             disabled={!isInStock}
                         >
                             {isInStock ? '🛒 Add to Cart' : 'Unavailable'}
-                        </button>
-                        <button 
-                            className="btn-view-details"
-                            onClick={onViewDetails}
-                        >
-                            View
                         </button>
                     </div>
                 </div>
