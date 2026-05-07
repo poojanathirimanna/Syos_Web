@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import CustomerHeader from "../../components/customer/CustomerHeader";
 import ProductCard from "../../components/customer/ProductCard";
-import { apiGetCustomerProducts, apiGetCategories, apiAddToCart, apiAddToWishlist } from "../../services/api";
+import { apiGetCustomerProducts, apiGetCategories, apiAddToCart, apiAddToWishlist, apiGetInventory } from "../../services/api";
 
 export default function ProductsPage({ user, onLogout }) {
     const [products, setProducts] = useState([]);
@@ -77,28 +77,69 @@ export default function ProductsPage({ user, onLogout }) {
             if (searchQuery) params.search = searchQuery;
             
             console.log("🔍 Loading products with params:", params);
-            const result = await apiGetCustomerProducts(params);
+            
+            // Fetch both products and inventory data
+            const [result, inventoryResult] = await Promise.all([
+                apiGetCustomerProducts(params),
+                apiGetInventory()
+            ]);
+            
             console.log("📦 Products API Response:", result);
+            console.log("📊 Inventory API Response:", inventoryResult);
+            
+            // Calculate real website quantities from inventory batches (exclude expired)
+            const websiteQuantities = {};
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0); // Set to start of day for comparison
+            
+            if (inventoryResult.success && inventoryResult.data?.inventoryLocations) {
+                inventoryResult.data.inventoryLocations.forEach(batch => {
+                    if (batch.location === 'WEBSITE') {
+                        // Check if batch is expired
+                        const expiryDate = batch.expiryDate ? new Date(batch.expiryDate) : null;
+                        const isExpired = expiryDate && expiryDate < currentDate;
+                        
+                        if (!isExpired) {
+                            const code = batch.productCode;
+                            if (!websiteQuantities[code]) {
+                                websiteQuantities[code] = 0;
+                            }
+                            websiteQuantities[code] += batch.quantity || 0;
+                        } else {
+                            console.log(`⚠️ Excluding expired batch: ${batch.productCode} (expired ${batch.expiryDate})`);
+                        }
+                    }
+                });
+            }
+            console.log("🌐 Real website quantities from inventory (non-expired only):", websiteQuantities);
             
             // Backend returns: { success: true, data: { products: [...], pagination: {...} } }
             const productList = result?.data?.products || result?.data || [];
             
-            // Log apple001 specifically to debug
-            const appleProduct = productList.find(p => p.productCode === 'apple001');
-            if (appleProduct) {
-                console.log('🍎 Apple001 product details:', {
-                    availableQuantity: appleProduct.availableQuantity,
-                    inStock: appleProduct.inStock,
-                    name: appleProduct.name
-                });
-            } else {
-                console.log('🍎 Apple001 not found in product list');
-            }
-            
             if (result.success && Array.isArray(productList)) {
-                setProducts(productList);
-                setFilteredProducts(productList);
-                console.log(`✅ Loaded ${productList.length} products`);
+                // Update products with real website quantities
+                const updatedProducts = productList.map(p => {
+                    const realWebsiteQty = websiteQuantities[p.productCode] || 0;
+                    return {
+                        ...p,
+                        availableQuantity: realWebsiteQty,
+                        inStock: realWebsiteQty > 0
+                    };
+                });
+                
+                setProducts(updatedProducts);
+                setFilteredProducts(updatedProducts);
+                console.log(`✅ Loaded ${updatedProducts.length} products with real website stock`);
+                
+                // Log apple001 specifically to debug
+                const appleProduct = updatedProducts.find(p => p.productCode === 'apple001');
+                if (appleProduct) {
+                    console.log('🍎 Apple001 product details:', {
+                        availableQuantity: appleProduct.availableQuantity,
+                        inStock: appleProduct.inStock,
+                        name: appleProduct.name
+                    });
+                }
             } else {
                 console.error("Invalid product data:", result);
                 setProducts([]);

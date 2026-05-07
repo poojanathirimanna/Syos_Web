@@ -11,8 +11,9 @@ import java.io.IOException;
 /**
  * CORS Filter - Enable Cross-Origin Resource Sharing
  * Allows frontend (localhost:5173) to communicate with backend (localhost:8081)
+ * NOTE: Disabled @WebFilter to avoid duplicate with web.xml configuration
  */
-@WebFilter("/*")
+// @WebFilter("/*")  // DISABLED - using web.xml configuration instead
 public class CorsFilter implements Filter {
 
     @Override
@@ -25,40 +26,18 @@ public class CorsFilter implements Filter {
         // Get origin from request
         String origin = httpRequest.getHeader("Origin");
 
-        // Allow requests from your frontend
-        if (origin != null && (origin.equals("http://localhost:5173") ||
-                               origin.equals("http://localhost:3000") ||
-                               origin.equals("http://localhost:5174"))) {
-            httpResponse.setHeader("Access-Control-Allow-Origin", origin);
-        }
-
-        // Allow credentials (cookies)
+        // Set CORS headers - simplified and more reliable
+        httpResponse.setHeader("Access-Control-Allow-Origin", "http://localhost:5173");
         httpResponse.setHeader("Access-Control-Allow-Credentials", "true");
-
-        // Allow common HTTP methods
         httpResponse.setHeader("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-
-        // Allow common headers
-        httpResponse.setHeader("Access-Control-Allow-Headers",
-            "Content-Type, Authorization, X-Requested-With, Accept, Origin");
-
-        // Cache preflight response for 1 hour
+        httpResponse.setHeader("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept, Origin");
         httpResponse.setHeader("Access-Control-Max-Age", "3600");
+        httpResponse.setHeader("Vary", "Origin");
 
-        // Debug: Log session info
-        HttpSession session = httpRequest.getSession(false);
-        if (session != null) {
-            String username = (String) session.getAttribute("username");
-            System.out.println("🔍 CORS Filter - Session ID: " + session.getId() +
-                             " | Username: " + username +
-                             " | Path: " + httpRequest.getRequestURI());
-        } else {
-            System.out.println("⚠️ CORS Filter - No session found for path: " + httpRequest.getRequestURI());
-        }
-
-        // Handle OPTIONS preflight requests
+        // Handle OPTIONS preflight requests immediately
         if ("OPTIONS".equalsIgnoreCase(httpRequest.getMethod())) {
             httpResponse.setStatus(HttpServletResponse.SC_OK);
+            httpResponse.getWriter().flush();
             return;
         }
 

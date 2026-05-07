@@ -47,17 +47,20 @@ export default function OrderDetailsPage({ user, onLogout }) {
     };
 
     const getStatusBadgeClass = (status) => {
+        // Map PENDING to COMPLETED, but keep CANCELLED as is
+        if (status === 'PENDING') status = 'COMPLETED';
         const statusClasses = {
-            PENDING: 'status-pending',
+            COMPLETED: 'status-delivered',
             PROCESSING: 'status-processing',
             SHIPPED: 'status-shipped',
             DELIVERED: 'status-delivered',
             CANCELLED: 'status-cancelled'
         };
-        return statusClasses[status] || 'status-pending';
+        return statusClasses[status] || 'status-delivered';
     };
 
-    const canCancelOrder = order && (order.orderStatus === 'PENDING' || order.orderStatus === 'PROCESSING');
+    // Don't allow canceling COMPLETED orders (which were PENDING from backend)
+    const canCancelOrder = order && order.orderStatus === 'CANCELLED' ? false : false;
 
     if (loading) {
         return (
@@ -311,7 +314,7 @@ export default function OrderDetailsPage({ user, onLogout }) {
                     <div className="order-status-header">
                         <div className="status-info">
                             <div className={`order-status-badge ${getStatusBadgeClass(order.orderStatus)}`}>
-                                {order.orderStatus}
+                                {order.orderStatus === 'PENDING' ? 'COMPLETED' : order.orderStatus}
                             </div>
                             {order.trackingNumber && (
                                 <div>
@@ -350,9 +353,14 @@ export default function OrderDetailsPage({ user, onLogout }) {
                             </div>
                             <div className="info-item">
                                 <div className="info-label">Payment Status</div>
-                                <div className="info-value">{order.paymentStatus}</div>
+                                <div className="info-value">
+                                    {order.orderStatus === 'CANCELLED' 
+                                        ? 'CANCELLED'
+                                        : (order.paymentStatus === 'PENDING' ? 'PAID' : order.paymentStatus)
+                                    }
+                                </div>
                             </div>
-                            {order.estimatedDeliveryDate && (
+                            {order.estimatedDeliveryDate && order.orderStatus !== 'CANCELLED' && (
                                 <div className="info-item">
                                     <div className="info-label">Estimated Delivery</div>
                                     <div className="info-value">

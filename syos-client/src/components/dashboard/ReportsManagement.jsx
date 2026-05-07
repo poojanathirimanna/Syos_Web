@@ -1,17 +1,103 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { 
+    apiGetSalesReport, 
+    apiGetTopProducts, 
+    apiGetInventoryAlerts,
+    apiGetCategoryPerformance,
+    apiGetPeakHours 
+} from "../../services/api";
 
 export default function ReportsManagement() {
     const [selectedPeriod, setSelectedPeriod] = useState("today");
     const [selectedReport, setSelectedReport] = useState("sales");
+    const [loading, setLoading] = useState(true);
+    const [error, setError] = useState(null);
+    
+    // Report data states
+    const [salesData, setSalesData] = useState(null);
+    const [topProducts, setTopProducts] = useState([]);
+    const [inventoryAlerts, setInventoryAlerts] = useState({ lowStock: [], expiringSoon: [] });
+    const [categoryPerformance, setCategoryPerformance] = useState([]);
+    const [peakHours, setPeakHours] = useState([]);
 
-    // Mock data for demonstration
-    const summaryData = {
-        totalRevenue: "₱125,450.00",
-        totalOrders: 248,
-        avgOrderValue: "₱506.25",
-        topProduct: "Basmati Rice 1kg",
-        lowStock: 5,
-        expiringSoon: 3
+    useEffect(() => {
+        loadReports();
+    }, [selectedPeriod]);
+
+    const loadReports = async () => {
+        setLoading(true);
+        setError(null);
+        
+        try {
+            const [salesResult, topProductsResult, alertsResult, categoryResult, peakHoursResult] = await Promise.all([
+                apiGetSalesReport(selectedPeriod),
+                apiGetTopProducts(5, selectedPeriod),
+                apiGetInventoryAlerts(),
+                apiGetCategoryPerformance(selectedPeriod),
+                apiGetPeakHours(selectedPeriod)
+            ]);
+
+            if (salesResult.success) {
+                setSalesData(salesResult.data);
+            }
+            if (topProductsResult.success) {
+                setTopProducts(topProductsResult.data);
+            }
+            if (alertsResult.success) {
+                setInventoryAlerts(alertsResult.data);
+            }
+            if (categoryResult.success) {
+                setCategoryPerformance(categoryResult.data);
+            }
+            if (peakHoursResult.success) {
+                setPeakHours(peakHoursResult.data);
+            }
+        } catch (err) {
+            console.error("Failed to load reports:", err);
+            setError("Failed to load reports. Please try again.");
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const formatCurrency = (amount) => {
+        return `LKR ${(amount || 0).toFixed(2)}`;
+    };
+
+    const exportReport = () => {
+        // Generate CSV content
+        const csvContent = generateCSVReport();
+        const blob = new Blob([csvContent], { type: 'text/csv' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `SYOS_Report_${selectedPeriod}_${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+    };
+
+    const generateCSVReport = () => {
+        if (!salesData) return '';
+        
+        let csv = 'SYOS Business Report\n';
+        csv += `Period: ${selectedPeriod}\n`;
+        csv += `Generated: ${new Date().toLocaleString()}\n\n`;
+        
+        csv += 'Sales Summary\n';
+        csv += 'Metric,Value\n';
+        csv += `Total Revenue,${salesData.totalRevenue}\n`;
+        csv += `Total Orders,${salesData.totalOrders}\n`;
+        csv += `Average Order Value,${salesData.avgOrderValue.toFixed(2)}\n\n`;
+        
+        csv += 'Top Products\n';
+        csv += 'Product Name,Quantity Sold,Revenue\n';
+        topProducts.forEach(p => {
+            csv += `${p.productName},${p.quantitySold},${p.revenue}\n`;
+        });
+        
+        return csv;
     };
 
     return (
@@ -280,6 +366,69 @@ export default function ReportsManagement() {
                     color: #52B788;
                     transform: translateY(-2px);
                 }
+
+                .loading-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    min-height: 400px;
+                }
+
+                .loading-spinner {
+                    font-size: 18px;
+                    color: #52B788;
+                    font-weight: 600;
+                }
+
+                .error-message {
+                    background: #fee2e2;
+                    border: 2px solid #ef4444;
+                    color: #dc2626;
+                    padding: 16px 20px;
+                    border-radius: 12px;
+                    margin-bottom: 24px;
+                    font-weight: 600;
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .no-data {
+                    text-align: center;
+                    padding: 40px 20px;
+                    color: #9ca3af;
+                    font-style: italic;
+                }
+
+                .alert-section-title {
+                    font-weight: 700;
+                    color: #ef4444;
+                    font-size: 13px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                    margin-bottom: 12px;
+                    padding-bottom: 8px;
+                    border-bottom: 2px solid #fee2e2;
+                }
+
+                .alert-value {
+                    color: #ef4444 !important;
+                }
+
+                .btn-export:disabled,
+                .action-btn:disabled {
+                    opacity: 0.5;
+                    cursor: not-allowed;
+                    transform: none !important;
+                }
+
+                @media print {
+                    .reports-header button,
+                    .filter-section,
+                    .action-btn {
+                        display: none;
+                    }
+                }
             `}</style>
 
             <div className="reports-management">
@@ -288,7 +437,7 @@ export default function ReportsManagement() {
                         <span>📈</span>
                         Reports & Analytics
                     </h1>
-                    <button className="btn-export">
+                    <button className="btn-export" onClick={exportReport} disabled={loading}>
                         📥 Export Report
                     </button>
                 </div>
@@ -300,170 +449,184 @@ export default function ReportsManagement() {
                             className="filter-select"
                             value={selectedPeriod}
                             onChange={(e) => setSelectedPeriod(e.target.value)}
+                            disabled={loading}
                         >
                             <option value="today">Today</option>
                             <option value="yesterday">Yesterday</option>
                             <option value="week">This Week</option>
                             <option value="month">This Month</option>
                             <option value="year">This Year</option>
-                            <option value="custom">Custom Range</option>
-                        </select>
-                    </div>
-
-                    <div className="filter-group">
-                        <label className="filter-label">Report Type</label>
-                        <select 
-                            className="filter-select"
-                            value={selectedReport}
-                            onChange={(e) => setSelectedReport(e.target.value)}
-                        >
-                            <option value="sales">Sales Report</option>
-                            <option value="inventory">Inventory Report</option>
-                            <option value="products">Product Performance</option>
-                            <option value="cashiers">Cashier Performance</option>
                         </select>
                     </div>
 
                     <div className="filter-group">
                         <label className="filter-label">Quick Actions</label>
                         <div className="quick-actions">
-                            <button className="action-btn">🖨️ Print</button>
-                            <button className="action-btn">📧 Email</button>
+                            <button className="action-btn" onClick={() => window.print()}>🖨️ Print</button>
+                            <button className="action-btn" onClick={loadReports} disabled={loading}>
+                                🔄 Refresh
+                            </button>
                         </div>
                     </div>
                 </div>
 
-                <div className="summary-grid">
-                    <div className="summary-card">
-                        <div className="summary-card-icon">💰</div>
-                        <div className="summary-card-label">Total Revenue</div>
-                        <div className="summary-card-value">{summaryData.totalRevenue}</div>
-                        <div className="summary-card-trend trend-positive">
-                            ↗ +12.5% from last period
-                        </div>
+                {error && (
+                    <div className="error-message">
+                        ⚠️ {error}
                     </div>
+                )}
 
-                    <div className="summary-card">
-                        <div className="summary-card-icon">🛒</div>
-                        <div className="summary-card-label">Total Orders</div>
-                        <div className="summary-card-value">{summaryData.totalOrders}</div>
-                        <div className="summary-card-trend trend-positive">
-                            ↗ +8.3% from last period
-                        </div>
+                {loading ? (
+                    <div className="loading-container">
+                        <div className="loading-spinner">⏳ Loading reports...</div>
                     </div>
-
-                    <div className="summary-card">
-                        <div className="summary-card-icon">📊</div>
-                        <div className="summary-card-label">Avg Order Value</div>
-                        <div className="summary-card-value">{summaryData.avgOrderValue}</div>
-                        <div className="summary-card-trend trend-neutral">
-                            → No change
-                        </div>
-                    </div>
-
-                    <div className="summary-card">
-                        <div className="summary-card-icon">⭐</div>
-                        <div className="summary-card-label">Top Product</div>
-                        <div className="summary-card-value" style={{fontSize: '20px'}}>{summaryData.topProduct}</div>
-                        <div className="summary-card-trend trend-positive">
-                            127 units sold
-                        </div>
-                    </div>
-
-                    <div className="summary-card">
-                        <div className="summary-card-icon">⚠️</div>
-                        <div className="summary-card-label">Low Stock Items</div>
-                        <div className="summary-card-value">{summaryData.lowStock}</div>
-                        <div className="summary-card-trend trend-negative">
-                            Requires attention
-                        </div>
-                    </div>
-
-                    <div className="summary-card">
-                        <div className="summary-card-icon">⏰</div>
-                        <div className="summary-card-label">Expiring Soon</div>
-                        <div className="summary-card-value">{summaryData.expiringSoon}</div>
-                        <div className="summary-card-trend trend-negative">
-                            Within 30 days
-                        </div>
-                    </div>
-                </div>
-
-                <div className="report-cards">
-                    <div className="report-card">
-                        <div className="report-card-title">
-                            <span>📈</span>
-                            Sales Trend
-                        </div>
-                        <div className="chart-placeholder">
-                            Sales Chart (Coming Soon)
-                        </div>
-                    </div>
-
-                    <div className="report-card">
-                        <div className="report-card-title">
-                            <span>🏆</span>
-                            Top Products
-                        </div>
-                        <div className="data-table">
-                            <div className="data-row">
-                                <span className="data-label">1. Basmati Rice 1kg</span>
-                                <span className="data-value">127 units</span>
+                ) : (
+                    <>
+                        <div className="summary-grid">
+                            <div className="summary-card">
+                                <div className="summary-card-icon">💰</div>
+                                <div className="summary-card-label">Total Revenue</div>
+                                <div className="summary-card-value">
+                                    {formatCurrency(salesData?.totalRevenue || 0)}
+                                </div>
+                                <div className="summary-card-trend trend-neutral">
+                                    {salesData?.totalOrders || 0} orders this period
+                                </div>
                             </div>
-                            <div className="data-row">
-                                <span className="data-label">2. White Sugar 1kg</span>
-                                <span className="data-value">98 units</span>
+
+                            <div className="summary-card">
+                                <div className="summary-card-icon">🛒</div>
+                                <div className="summary-card-label">Total Orders</div>
+                                <div className="summary-card-value">{salesData?.totalOrders || 0}</div>
                             </div>
-                            <div className="data-row">
-                                <span className="data-label">3. Cooking Oil 1L</span>
-                                <span className="data-value">85 units</span>
+
+                            <div className="summary-card">
+                                <div className="summary-card-icon">📊</div>
+                                <div className="summary-card-label">Avg Order Value</div>
+                                <div className="summary-card-value">
+                                    {formatCurrency(salesData?.avgOrderValue || 0)}
+                                </div>
+                                <div className="summary-card-trend trend-neutral">
+                                    Per transaction
+                                </div>
                             </div>
-                            <div className="data-row">
-                                <span className="data-label">4. Salt 500g</span>
-                                <span className="data-value">76 units</span>
+
+                            <div className="summary-card">
+                                <div className="summary-card-icon">⭐</div>
+                                <div className="summary-card-label">Top Product</div>
+                                <div className="summary-card-value" style={{fontSize: '18px'}}>
+                                    {topProducts[0]?.productName || 'No data'}
+                                </div>
+                                <div className="summary-card-trend trend-positive">
+                                    {topProducts[0]?.quantitySold || 0} units sold
+                                </div>
                             </div>
-                            <div className="data-row">
-                                <span className="data-label">5. Wheat Flour 1kg</span>
-                                <span className="data-value">62 units</span>
+
+                            <div className="summary-card">
+                                <div className="summary-card-icon">⚠️</div>
+                                <div className="summary-card-label">Low Stock Items</div>
+                                <div className="summary-card-value">{inventoryAlerts.lowStockCount || 0}</div>
+                                <div className={`summary-card-trend ${inventoryAlerts.lowStockCount > 0 ? 'trend-negative' : 'trend-positive'}`}>
+                                    {inventoryAlerts.lowStockCount > 0 ? 'Requires attention' : 'All good'}
+                                </div>
+                            </div>
+
+                            <div className="summary-card">
+                                <div className="summary-card-icon">⏰</div>
+                                <div className="summary-card-label">Expiring Soon</div>
+                                <div className="summary-card-value">{inventoryAlerts.expiringSoonCount || 0}</div>
+                                <div className={`summary-card-trend ${inventoryAlerts.expiringSoonCount > 0 ? 'trend-negative' : 'trend-positive'}`}>
+                                    {inventoryAlerts.expiringSoonCount > 0 ? 'Within 30 days' : 'All good'}
+                                </div>
                             </div>
                         </div>
-                    </div>
 
-                    <div className="report-card">
-                        <div className="report-card-title">
-                            <span>📊</span>
-                            Category Performance
-                        </div>
-                        <div className="chart-placeholder">
-                            Category Chart (Coming Soon)
-                        </div>
-                    </div>
+                        <div className="report-cards">
+                            <div className="report-card">
+                                <div className="report-card-title">
+                                    <span>🏆</span>
+                                    Top Products
+                                </div>
+                                <div className="data-table">
+                                    {topProducts.length > 0 ? (
+                                        topProducts.map((product, index) => (
+                                            <div key={product.productCode} className="data-row">
+                                                <span className="data-label">
+                                                    {index + 1}. {product.productName}
+                                                </span>
+                                                <span className="data-value">{product.quantitySold} units</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="no-data">No product data for this period</div>
+                                    )}
+                                </div>
+                            </div>
 
-                    <div className="report-card">
-                        <div className="report-card-title">
-                            <span>⏱️</span>
-                            Peak Hours
+                            <div className="report-card">
+                                <div className="report-card-title">
+                                    <span>📊</span>
+                                    Category Performance
+                                </div>
+                                <div className="data-table">
+                                    {categoryPerformance.length > 0 ? (
+                                        categoryPerformance.slice(0, 5).map((cat) => (
+                                            <div key={cat.categoryId} className="data-row">
+                                                <span className="data-label">{cat.categoryName}</span>
+                                                <span className="data-value">{formatCurrency(cat.revenue)}</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="no-data">No category data for this period</div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="report-card">
+                                <div className="report-card-title">
+                                    <span>⏱️</span>
+                                    Peak Hours
+                                </div>
+                                <div className="data-table">
+                                    {peakHours.length > 0 ? (
+                                        peakHours.slice(0, 5).map((hour) => (
+                                            <div key={hour.hour} className="data-row">
+                                                <span className="data-label">{hour.hourLabel}</span>
+                                                <span className="data-value">{hour.orderCount} orders</span>
+                                            </div>
+                                        ))
+                                    ) : (
+                                        <div className="no-data">No sales data for this period</div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="report-card">
+                                <div className="report-card-title">
+                                    <span>⚠️</span>
+                                    Inventory Alerts
+                                </div>
+                                <div className="data-table">
+                                    {inventoryAlerts.lowStock.length > 0 ? (
+                                        <>
+                                            <div className="alert-section-title">Low Stock</div>
+                                            {inventoryAlerts.lowStock.slice(0, 3).map((item) => (
+                                                <div key={item.productCode} className="data-row">
+                                                    <span className="data-label">{item.productName || item.name}</span>
+                                                    <span className="data-value alert-value">
+                                                        {item.availableQuantity} left
+                                                    </span>
+                                                </div>
+                                            ))}
+                                        </>
+                                    ) : (
+                                        <div className="no-data">No low stock items</div>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                        <div className="data-table">
-                            <div className="data-row">
-                                <span className="data-label">9:00 AM - 11:00 AM</span>
-                                <span className="data-value">45 orders</span>
-                            </div>
-                            <div className="data-row">
-                                <span className="data-label">1:00 PM - 3:00 PM</span>
-                                <span className="data-value">67 orders</span>
-                            </div>
-                            <div className="data-row">
-                                <span className="data-label">5:00 PM - 7:00 PM</span>
-                                <span className="data-value">89 orders</span>
-                            </div>
-                            <div className="data-row">
-                                <span className="data-label">7:00 PM - 9:00 PM</span>
-                                <span className="data-value">47 orders</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
+                    </>
+                )}
             </div>
         </>
     );

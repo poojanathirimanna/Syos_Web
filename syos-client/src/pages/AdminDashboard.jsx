@@ -117,7 +117,7 @@ export default function AdminDashboard({ user, onLogout, initialMenu }) {
 
                     <div className="content-area">
                         {activeMenu === "dashboard" && (
-                            <AnalyticsDashboard />
+                            <AnalyticsDashboard onNavigate={setActiveMenu} />
                         )}
 
                         {activeMenu === "products" && (

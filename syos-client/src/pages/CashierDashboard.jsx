@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import Sidebar from "../components/common/Sidebar";
 import Header from "../components/common/Header";
-import { apiGetProducts, apiCreateBill, apiGetCashierBills, apiGetCategories, apiGetBillDetails, apiGetCashierPromotions } from "../services/api";
+import { apiGetProducts, apiCreateBill, apiGetCashierBills, apiGetCategories, apiGetBillDetails, apiGetCashierPromotions, apiGetInventory } from "../services/api";
 import syosLogo from "../assets/syos-logo-text.png";
 
 export default function CashierDashboard({ user, onLogout }) {
@@ -78,17 +78,56 @@ export default function CashierDashboard({ user, onLogout }) {
     const loadProducts = async () => {
         try {
             setLoading(true);
-            const response = await apiGetProducts();
-            console.log('🛒 POS: API Response:', response);
-            if (response.success) {
+            
+            // Fetch both products and inventory data
+            const [productsResponse, inventoryResponse] = await Promise.all([
+                apiGetProducts(),
+                apiGetInventory()
+            ]);
+            
+            console.log('🛒 POS: Products API Response:', productsResponse);
+            console.log('📦 POS: Inventory API Response:', inventoryResponse);
+            
+            // Calculate real shelf quantities from inventory batches (exclude expired)
+            const shelfQuantities = {};
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0);
+            
+            if (inventoryResponse.success && inventoryResponse.data?.inventoryLocations) {
+                inventoryResponse.data.inventoryLocations.forEach(batch => {
+                    if (batch.location === 'SHELF') {
+                        // Check if batch is expired
+                        const expiryDate = batch.expiryDate ? new Date(batch.expiryDate) : null;
+                        const isExpired = expiryDate && expiryDate < currentDate;
+                        
+                        if (!isExpired) {
+                            const code = batch.productCode;
+                            if (!shelfQuantities[code]) {
+                                shelfQuantities[code] = 0;
+                            }
+                            shelfQuantities[code] += batch.quantity || 0;
+                        }
+                    }
+                });
+            }
+            console.log('📊 POS: Real shelf quantities (non-expired only):', shelfQuantities);
+            
+            if (productsResponse.success) {
                 // Products are nested inside data.products
-                const productsData = response.data?.products || response.data || [];
+                const productsData = productsResponse.data?.products || productsResponse.data || [];
                 console.log('🛒 POS: Products data:', productsData);
                 const productsArray = Array.isArray(productsData) ? productsData : [];
-                console.log('🛒 POS: Setting products array:', productsArray);
-                setProducts(productsArray);
+                
+                // Update products with real shelf quantities
+                const updatedProducts = productsArray.map(p => ({
+                    ...p,
+                    shelfQuantity: shelfQuantities[p.productCode] || 0
+                }));
+                
+                console.log('🛒 POS: Setting products with real shelf quantities:', updatedProducts.slice(0, 3));
+                setProducts(updatedProducts);
             } else {
-                setError(response.message || "Failed to load products");
+                setError(productsResponse.message || "Failed to load products");
                 setProducts([]);
             }
         } catch (err) {
@@ -488,6 +527,8 @@ Status: ${bill.status || 'Completed'}
 
                 .product-card.out-of-stock {
                     cursor: not-allowed;
+                    pointer-events: none;
+                    opacity: 0.6;
                 }
 
                 .product-card.out-of-stock:hover {
@@ -1237,7 +1278,7 @@ Status: ${bill.status || 'Completed'}
                                                             )}
                                                             <div className="cart-total">
                                                                 <div className="cart-total-label">Total Amount:</div>
-                                                                <div className="cart-total-value">₱{getCartTotal().toFixed(2)}</div>
+                                                                <div className="cart-total-value">LKR {getCartTotal().toFixed(2)}</div>
                                                             </div>
                                                             <button className="checkout-button" onClick={handleCheckout}>
                                                                 💳 Checkout

@@ -84,7 +84,7 @@ export default function WishlistPage({ user, onLogout }) {
                 .product-image-container {
                     position: relative;
                     width: 100%;
-                    padding-top: 100%;
+                    padding-top: 75%;
                     background: #f5f5f5;
                     overflow: hidden;
                     cursor: pointer;

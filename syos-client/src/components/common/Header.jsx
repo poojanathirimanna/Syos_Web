@@ -1,6 +1,13 @@
 import React from 'react';
 
 export default function Header({ user, onToggleSidebar, onLogout, showNotifications = false }) {
+    // Log user info for debugging
+    console.log("👤 Current User:", { 
+        username: user?.username, 
+        role: user?.role, 
+        userId: user?.userId 
+    });
+
     const handleLogout = () => {
         console.log("🔴 LOGOUT BUTTON CLICKED!");
         console.log("🔍 onLogout function exists?", !!onLogout);
@@ -108,6 +115,35 @@ export default function Header({ user, onToggleSidebar, onLogout, showNotificati
                     color: #333;
                 }
                 
+                .user-role {
+                    font-size: 11px;
+                    font-weight: 600;
+                    padding: 3px 8px;
+                    border-radius: 12px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.5px;
+                }
+                
+                .role-admin {
+                    background: #e3f2fd;
+                    color: #1976d2;
+                }
+                
+                .role-manager {
+                    background: #f3e5f5;
+                    color: #7b1fa2;
+                }
+                
+                .role-cashier {
+                    background: #fff3e0;
+                    color: #f57c00;
+                }
+                
+                .role-customer {
+                    background: #e8f5e9;
+                    color: #388e3c;
+                }
+                
                 .logout-button {
                     background: #f44336;
                     color: white;
@@ -153,7 +189,14 @@ export default function Header({ user, onToggleSidebar, onLogout, showNotificati
                         <div className="user-avatar">
                             {user?.username?.charAt(0).toUpperCase() || 'U'}
                         </div>
-                        {user?.username && <span className="user-name">{user.username}</span>}
+                        <div>
+                            {user?.username && <div className="user-name">{user.username}</div>}
+                            {user?.role && (
+                                <span className={`user-role role-${user.role.toLowerCase()}`}>
+                                    {user.role}
+                                </span>
+                            )}
+                        </div>
                     </div>
                     <button className="logout-button" onClick={handleLogout}>
                         Logout

@@ -180,7 +180,7 @@ export default function ProductDetailsPage({ user, onLogout }) {
                 }
                 .main-image {
                     width: 100%;
-                    aspect-ratio: 1;
+                    aspect-ratio: 4/3;
                     object-fit: cover;
                     border-radius: 12px;
                     background: #f5f5f5;

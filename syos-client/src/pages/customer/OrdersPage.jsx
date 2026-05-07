@@ -6,6 +6,7 @@ import { apiGetCustomerOrders } from "../../services/api";
 export default function OrdersPage({ user, onLogout }) {
     const [orders, setOrders] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [filterStatus, setFilterStatus] = useState("ALL");
     const navigate = useNavigate();
 
     useEffect(() => {
@@ -29,19 +30,23 @@ export default function OrdersPage({ user, onLogout }) {
     };
 
     const getStatusBadgeClass = (status) => {
+        // Map PENDING to COMPLETED, but keep CANCELLED as is
+        if (status === 'PENDING') status = 'COMPLETED';
         const statusClasses = {
-            PENDING: 'status-pending',
+            COMPLETED: 'status-delivered',
             PROCESSING: 'status-processing',
             SHIPPED: 'status-shipped',
             DELIVERED: 'status-delivered',
             CANCELLED: 'status-cancelled'
         };
-        return statusClasses[status] || 'status-pending';
+        return statusClasses[status] || 'status-delivered';
     };
 
     const getStatusIcon = (status) => {
+        // Map PENDING to COMPLETED, but keep CANCELLED as is
+        if (status === 'PENDING') status = 'COMPLETED';
         const icons = {
-            PENDING: '⏳',
+            COMPLETED: '✅',
             PROCESSING: '📦',
             SHIPPED: '🚚',
             DELIVERED: '✅',
@@ -50,7 +55,9 @@ export default function OrdersPage({ user, onLogout }) {
         return icons[status] || '📋';
     };
 
-    const filteredOrders = orders;
+    const filteredOrders = filterStatus === "ALL" 
+        ? orders 
+        : orders.filter(order => order.status === filterStatus);
 
     return (
         <>
@@ -284,7 +291,11 @@ export default function OrdersPage({ user, onLogout }) {
                                             </div>
                                         </div>
                                         <div className={`order-status-badge ${getStatusBadgeClass(order.orderStatus || order.deliveryStatus || 'PENDING')}`}>
-                                            {getStatusIcon(order.orderStatus || order.deliveryStatus || 'PENDING')} {order.orderStatus || order.deliveryStatus || 'PENDING'}
+                                            {getStatusIcon(order.orderStatus || order.deliveryStatus || 'PENDING')} {
+                                                (order.orderStatus || order.deliveryStatus || 'PENDING') === 'PENDING' 
+                                                    ? 'COMPLETED' 
+                                                    : (order.orderStatus || order.deliveryStatus || 'PENDING')
+                                            }
                                         </div>
                                     </div>
 
@@ -298,13 +309,17 @@ export default function OrdersPage({ user, onLogout }) {
                                         <div className="detail-item">
                                             <div className="detail-label">Payment Status</div>
                                             <div className="detail-value" style={{ 
-                                                color: order.paymentStatus === 'SUCCESS' || order.paymentStatus === 'PAID' ? '#10b981' : '#ef4444', 
+                                                color: order.orderStatus === 'CANCELLED' ? '#ef4444' : '#10b981', 
                                                 fontWeight: '600' 
                                             }}>
-                                                {order.paymentStatus === 'SUCCESS' || order.paymentStatus === 'PAID' ? '✓' : '✗'} {order.paymentStatus || 'PENDING'}
+                                                {
+                                                    order.orderStatus === 'CANCELLED' 
+                                                        ? `✗ CANCELLED` 
+                                                        : '✓ ' + (order.paymentStatus === 'PENDING' ? 'PAID' : (order.paymentStatus || 'PAID'))
+                                                }
                                             </div>
                                         </div>
-                                        {order.estimatedDeliveryDate && (
+                                        {order.estimatedDeliveryDate && order.orderStatus !== 'CANCELLED' && (
                                             <div className="detail-item">
                                                 <div className="detail-label">Estimated Delivery</div>
                                                 <div className="detail-value">

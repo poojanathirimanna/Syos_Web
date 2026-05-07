@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { apiGetProducts, apiGetInventory, apiGetCategories } from '../../services/api';
 
-export default function AnalyticsDashboard() {
+export default function AnalyticsDashboard({ onNavigate }) {
     const [loading, setLoading] = useState(true);
     const [stats, setStats] = useState({
         totalProducts: 0,
@@ -9,7 +9,8 @@ export default function AnalyticsDashboard() {
         outOfStockProducts: 0,
         activeDiscounts: 0,
         totalInventoryValue: 0,
-        categories: []
+        categories: [],
+        totalCategories: 0
     });
 
     const [productsByCategory, setProductsByCategory] = useState([]);
@@ -31,44 +32,103 @@ export default function AnalyticsDashboard() {
                 apiGetCategories()
             ]);
 
+            // Create category ID to name mapping from categories response
+            const categoryIdToName = {};
+            if (categoriesRes.success && categoriesRes.data) {
+                console.log('📁 Categories response:', categoriesRes.data);
+                categoriesRes.data.forEach(cat => {
+                    categoryIdToName[cat.categoryId] = cat.categoryName;
+                });
+            }
+            console.log('📊 Category ID to Name mapping:', categoryIdToName);
+
+            // Create product quantity map from inventory batches (exclude expired)
+            const productQuantities = {};
+            const currentDate = new Date();
+            currentDate.setHours(0, 0, 0, 0);
+            
+            if (inventoryRes.success && inventoryRes.data?.inventoryLocations) {
+                inventoryRes.data.inventoryLocations.forEach(batch => {
+                    // Check if batch is expired
+                    const expiryDate = batch.expiryDate ? new Date(batch.expiryDate) : null;
+                    const isExpired = expiryDate && expiryDate < currentDate;
+                    
+                    if (!isExpired) {
+                        const code = batch.productCode;
+                        if (!productQuantities[code]) {
+                            productQuantities[code] = 0;
+                        }
+                        productQuantities[code] += batch.quantity || 0;
+                    }
+                });
+            }
+            console.log('📊 Real product quantities from inventory (non-expired only):', productQuantities);
+
             if (productsRes.success) {
                 const products = productsRes.data?.products || [];
+                console.log('📦 Products sample:', products.slice(0, 2));
                 
-                // Calculate stats
-                const lowStock = products.filter(p => p.status === 'Low Stock').length;
-                const outOfStock = products.filter(p => p.status === 'Out of Stock').length;
+                // Update products with real quantities from inventory
+                products.forEach(p => {
+                    p.realQuantity = productQuantities[p.productCode] || 0;
+                    
+                    // Recalculate status based on real quantity
+                    if (p.realQuantity === 0) {
+                        p.realStatus = 'Out of Stock';
+                    } else if (p.realQuantity <= 50) {
+                        p.realStatus = 'Low Stock';
+                    } else {
+                        p.realStatus = 'In Stock';
+                    }
+                });
+                
+                // Calculate stats using real quantities
+                const lowStock = products.filter(p => p.realStatus === 'Low Stock').length;
+                const outOfStock = products.filter(p => p.realStatus === 'Out of Stock').length;
                 const activeDiscounts = products.filter(p => p.discountPercentage > 0).length;
                 
-                // Calculate total inventory value
+                // Calculate total inventory value using real quantities
                 const totalValue = products.reduce((sum, p) => {
-                    return sum + (p.unitPrice * p.totalQuantity);
+                    return sum + (p.unitPrice * p.realQuantity);
                 }, 0);
 
                 // Group products by category
                 const categoryMap = {};
                 products.forEach(p => {
-                    const catName = p.categoryName || 'Uncategorized';
-                    if (!categoryMap[catName]) {
-                        categoryMap[catName] = { name: catName, count: 0, value: 0 };
+                    // Get category name from ID if categoryName is null
+                    let catName = p.categoryName;
+                    if (!catName || catName === '-' || catName === 'Updated' || catName.trim() === '') {
+                        // Try to get name from categoryId mapping
+                        catName = categoryIdToName[p.categoryId] || null;
                     }
-                    categoryMap[catName].count++;
-                    categoryMap[catName].value += p.unitPrice * p.totalQuantity;
+                    
+                    // Only count products with valid categories
+                    if (catName && catName !== '-' && catName !== 'Updated' && catName.trim() !== '') {
+                        if (!categoryMap[catName]) {
+                            categoryMap[catName] = { name: catName, count: 0, value: 0 };
+                        }
+                        categoryMap[catName].count++;
+                        categoryMap[catName].value += p.unitPrice * p.realQuantity;
+                    }
                 });
 
-                // Stock level distribution
+                console.log('📊 Category Map:', categoryMap);
+
+                // Stock level distribution using real status
                 const stockDist = {
-                    inStock: products.filter(p => p.status === 'In Stock').length,
+                    inStock: products.filter(p => p.realStatus === 'In Stock').length,
                     lowStock: lowStock,
                     outOfStock: outOfStock
                 };
 
-                // Top 10 products by inventory value
+                // Top 10 products by inventory value (filter out zero quantity)
                 const topProds = products
+                    .filter(p => p.realQuantity > 0) // Only products with stock
                     .map(p => ({
                         name: p.name,
                         code: p.productCode,
-                        value: p.unitPrice * p.totalQuantity,
-                        quantity: p.totalQuantity,
+                        value: p.unitPrice * p.realQuantity,
+                        quantity: p.realQuantity,
                         price: p.unitPrice
                     }))
                     .sort((a, b) => b.value - a.value)
@@ -80,7 +140,8 @@ export default function AnalyticsDashboard() {
                     outOfStockProducts: outOfStock,
                     activeDiscounts: activeDiscounts,
                     totalInventoryValue: totalValue,
-                    categories: Object.values(categoryMap)
+                    categories: Object.values(categoryMap),
+                    totalCategories: categoriesRes.success ? (categoriesRes.data || []).length : 0
                 });
 
                 setProductsByCategory(Object.values(categoryMap));
@@ -195,7 +256,7 @@ export default function AnalyticsDashboard() {
 
                     <div className="stat-card">
                         <div className="stat-icon">📁</div>
-                        <div className="stat-value">{stats.categories.length}</div>
+                        <div className="stat-value">{stats.totalCategories}</div>
                         <div className="stat-label">Product Categories</div>
                     </div>
                 </div>
@@ -222,63 +283,90 @@ export default function AnalyticsDashboard() {
                     <div className="chart-card">
                         <h3 className="chart-title">Products by Category</h3>
                         <div className="category-list">
-                            {productsByCategory.slice(0, 8).map((cat, idx) => {
-                                const maxCount = Math.max(...productsByCategory.map(c => c.count));
-                                const percentage = (cat.count / maxCount) * 100;
-                                return (
-                                    <div key={idx}>
-                                        <div className="category-item">
+                            {productsByCategory.length === 0 ? (
+                                <div style={{textAlign: 'center', padding: '40px 20px', color: '#999'}}>
+                                    <p>No products assigned to categories yet</p>
+                                    <p style={{fontSize: '14px', marginTop: '8px'}}>Products need valid category assignments</p>
+                                </div>
+                            ) : (
+                                productsByCategory.slice(0, 8).map((cat, idx) => {
+                                    return (
+                                        <div key={idx} className="category-item">
                                             <span style={{fontWeight: 500}}>{cat.name}</span>
                                             <span style={{color: '#52B788', fontWeight: 600}}>{cat.count} products</span>
                                         </div>
-                                        <div className="category-bar">
-                                            <div className="category-bar-fill" style={{width: `${percentage}%`}}></div>
-                                        </div>
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    </div>
+                                    );
+                                })
+                            )}
+                        </div>                        {productsByCategory.length > 0 && (
+                            <button 
+                                onClick={() => onNavigate && onNavigate('categories')}
+                                style={{
+                                    width: '100%',
+                                    marginTop: '16px',
+                                    padding: '12px',
+                                    background: 'linear-gradient(135deg, #52B788 0%, #40916C 100%)',
+                                    color: 'white',
+                                    border: 'none',
+                                    borderRadius: '8px',
+                                    fontSize: '14px',
+                                    fontWeight: 600,
+                                    cursor: 'pointer',
+                                    transition: 'all 0.3s'
+                                }}
+                                onMouseEnter={(e) => e.target.style.transform = 'translateY(-2px)'}
+                                onMouseLeave={(e) => e.target.style.transform = 'translateY(0)'}
+                            >
+                                📁 Manage Categories
+                            </button>
+                        )}                    </div>
                 </div>
 
                 {/* Top Products Table */}
                 <div className="chart-card full-width-card">
                     <h3 className="chart-title">🏆 Top 10 Products by Inventory Value</h3>
-                    <table className="top-products-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Product Code</th>
-                                <th>Product Name</th>
-                                <th>Quantity</th>
-                                <th>Unit Price</th>
-                                <th>Total Value</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {topProducts.map((product, idx) => {
-                                let rankClass = '';
-                                if (idx === 0) rankClass = 'gold';
-                                else if (idx === 1) rankClass = 'silver';
-                                else if (idx === 2) rankClass = 'bronze';
-                                
-                                return (
-                                    <tr key={idx}>
-                                        <td>
-                                            <div className={`product-rank ${rankClass}`}>
-                                                {idx + 1}
-                                            </div>
-                                        </td>
-                                        <td style={{fontWeight: 600, color: '#52B788'}}>{product.code}</td>
-                                        <td>{product.name}</td>
-                                        <td>{product.quantity} units</td>
-                                        <td>Rs. {product.price.toFixed(2)}</td>
-                                        <td style={{fontWeight: 600}}>Rs. {product.value.toLocaleString()}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
+                    {topProducts.length === 0 ? (
+                        <div style={{textAlign: 'center', padding: '40px 20px', color: '#999'}}>
+                            <p>No products with inventory available</p>
+                            <p style={{fontSize: '14px', marginTop: '8px'}}>Add stock to products to see them ranked here</p>
+                        </div>
+                    ) : (
+                        <table className="top-products-table">
+                            <thead>
+                                <tr>
+                                    <th>Rank</th>
+                                    <th>Product Code</th>
+                                    <th>Product Name</th>
+                                    <th>Quantity</th>
+                                    <th>Unit Price</th>
+                                    <th>Total Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {topProducts.map((product, idx) => {
+                                    let rankClass = '';
+                                    if (idx === 0) rankClass = 'gold';
+                                    else if (idx === 1) rankClass = 'silver';
+                                    else if (idx === 2) rankClass = 'bronze';
+                                    
+                                    return (
+                                        <tr key={idx}>
+                                            <td>
+                                                <div className={`product-rank ${rankClass}`}>
+                                                    {idx + 1}
+                                                </div>
+                                            </td>
+                                            <td style={{fontWeight: 600, color: '#52B788'}}>{product.code}</td>
+                                            <td>{product.name}</td>
+                                            <td>{product.quantity} units</td>
+                                            <td>Rs. {product.price.toFixed(2)}</td>
+                                            <td style={{fontWeight: 600}}>Rs. {product.value.toLocaleString()}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
             </div>
         </>

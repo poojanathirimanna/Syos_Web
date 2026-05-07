@@ -14,9 +14,12 @@ export default function ProductManagement() {
     const [error, setError] = useState("");
     const [success, setSuccess] = useState("");
     const [searchTerm, setSearchTerm] = useState("");
+    const [statusFilter, setStatusFilter] = useState("all"); // all, out-of-stock, low-stock, in-stock
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState("create"); // create, edit, view
     const [entriesPerPage, setEntriesPerPage] = useState(10);
+    const [showDeleteModal, setShowDeleteModal] = useState(false);
+    const [productToDelete, setProductToDelete] = useState(null);
     const [activeDropdown, setActiveDropdown] = useState(null);
     const [imageFile, setImageFile] = useState(null);
     const [imagePreview, setImagePreview] = useState("");
@@ -118,13 +121,17 @@ export default function ProductManagement() {
         setActiveDropdown(null);
     };
 
-    const handleDelete = async (productCode) => {
-        if (!window.confirm("Are you sure you want to delete this product?")) {
-            return;
-        }
+    const handleDelete = (productCode) => {
+        setProductToDelete(productCode);
+        setShowDeleteModal(true);
+        setActiveDropdown(null);
+    };
+
+    const confirmDelete = async () => {
+        if (!productToDelete) return;
 
         try {
-            const response = await apiDeleteProduct(productCode);
+            const response = await apiDeleteProduct(productToDelete);
             if (response.success) {
                 setSuccess("Product deleted successfully!");
                 loadProducts();
@@ -136,6 +143,9 @@ export default function ProductManagement() {
         } catch (err) {
             setError("Error deleting product: " + err.message);
             setTimeout(() => setError(""), 3000);
+        } finally {
+            setShowDeleteModal(false);
+            setProductToDelete(null);
         }
     };
 
@@ -190,10 +200,12 @@ export default function ProductManagement() {
     };
 
     const filteredProducts = Array.isArray(products) 
-        ? products.filter(product =>
-            product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-            product.productCode?.toLowerCase().includes(searchTerm.toLowerCase())
-        ).slice(0, entriesPerPage)
+        ? products.filter(product => {
+            const matchesSearch = product.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                product.productCode?.toLowerCase().includes(searchTerm.toLowerCase());
+            
+            return matchesSearch;
+        }).slice(0, entriesPerPage)
         : [];
 
     return (
@@ -267,6 +279,41 @@ export default function ProductManagement() {
                     border-radius: 4px;
                     font-size: 15px;
                     cursor: pointer;
+                }
+
+                .search-control {
+                    position: relative;
+                    display: flex;
+                    align-items: center;
+                }
+
+                .status-filters {
+                    display: flex;
+                    gap: 8px;
+                    margin-bottom: 16px;
+                }
+
+                .filter-btn {
+                    padding: 8px 16px;
+                    border: 2px solid #e0e0e0;
+                    background: white;
+                    border-radius: 8px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    cursor: pointer;
+                    transition: all 0.3s;
+                    color: #666;
+                }
+
+                .filter-btn:hover {
+                    border-color: #52B788;
+                    color: #52B788;
+                }
+
+                .filter-btn.active {
+                    background: linear-gradient(135deg, #52B788 0%, #40916C 100%);
+                    color: white;
+                    border-color: #52B788;
                 }
 
                 .search-control {
@@ -408,7 +455,7 @@ export default function ProductManagement() {
 
                 .dropdown-menu {
                     position: absolute;
-                    top: calc(100% + 4px);
+                    bottom: calc(100% + 4px);
                     right: 0;
                     background: white;
                     border: 1px solid #ddd;
@@ -513,6 +560,83 @@ export default function ProductManagement() {
                 .modal-close:hover {
                     background: #f5f5f5;
                     color: #333;
+                }
+
+                .confirm-modal {
+                    background: white;
+                    border-radius: 16px;
+                    width: 90%;
+                    max-width: 400px;
+                    animation: slideUp 0.3s;
+                    box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+                }
+
+                .confirm-modal-header {
+                    padding: 20px 24px;
+                    border-bottom: 2px solid #f0f0f0;
+                }
+
+                .confirm-modal-header h3 {
+                    margin: 0;
+                    font-size: 18px;
+                    font-weight: 700;
+                    color: #333;
+                }
+
+                .confirm-modal-body {
+                    padding: 24px;
+                }
+
+                .confirm-modal-body p {
+                    margin: 0 0 12px 0;
+                    font-size: 15px;
+                    color: #555;
+                }
+
+                .confirm-warning {
+                    font-size: 13px !important;
+                    color: #dc2626 !important;
+                    font-weight: 500;
+                }
+
+                .confirm-modal-footer {
+                    padding: 16px 24px;
+                    border-top: 2px solid #f0f0f0;
+                    display: flex;
+                    gap: 12px;
+                    justify-content: flex-end;
+                }
+
+                .btn-cancel {
+                    padding: 10px 24px;
+                    border: 2px solid #e0e0e0;
+                    background: white;
+                    color: #555;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .btn-cancel:hover {
+                    background: #f5f5f5;
+                    border-color: #ccc;
+                }
+
+                .btn-delete {
+                    padding: 10px 24px;
+                    border: none;
+                    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+                    color: white;
+                    border-radius: 8px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+
+                .btn-delete:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
                 }
 
                 .modal-body {
@@ -678,6 +802,15 @@ export default function ProductManagement() {
                             </div>
                         </div>
 
+                        <div className="status-filters">
+                            <button 
+                                className={`filter-btn ${statusFilter === 'all' ? 'active' : ''}`}
+                                onClick={() => setStatusFilter('all')}
+                            >
+                                All Products
+                            </button>
+                        </div>
+
                         {filteredProducts.length === 0 ? (
                             <div className="empty-state">
                                 <div className="empty-icon">📦</div>
@@ -785,6 +918,36 @@ export default function ProductManagement() {
                             </div>
                         )}
                     </>
+                )}
+
+                {showDeleteModal && (
+                    <div className="modal-overlay" onClick={() => setShowDeleteModal(false)}>
+                        <div className="confirm-modal" onClick={(e) => e.stopPropagation()}>
+                            <div className="confirm-modal-header">
+                                <h3>⚠️ Confirm Delete</h3>
+                            </div>
+                            <div className="confirm-modal-body">
+                                <p>Are you sure you want to delete this product?</p>
+                                <p className="confirm-warning">This action cannot be undone.</p>
+                            </div>
+                            <div className="confirm-modal-footer">
+                                <button
+                                    type="button"
+                                    className="btn-cancel"
+                                    onClick={() => setShowDeleteModal(false)}
+                                >
+                                    Cancel
+                                </button>
+                                <button
+                                    type="button"
+                                    className="btn-delete"
+                                    onClick={confirmDelete}
+                                >
+                                    Delete
+                                </button>
+                            </div>
+                        </div>
+                    </div>
                 )}
 
                 {showModal && (

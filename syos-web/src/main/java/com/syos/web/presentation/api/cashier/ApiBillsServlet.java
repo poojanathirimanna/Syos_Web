@@ -88,9 +88,12 @@ public class ApiBillsServlet extends HttpServlet {
 
             System.out.println("📨 [" + Thread.currentThread().getName() + "] Submitting bill request to queue...");
 
+
+
             // 🆕 SUBMIT TO QUEUE (instead of direct execution!)
             CompletableFuture<BillQueueResponse> future =
                     BillQueueService.getInstance().submitBillRequest(request, userId);
+
 
 
             // Wait for result with timeout (30 seconds)

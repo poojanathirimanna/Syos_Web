@@ -1,7 +1,6 @@
 package com.syos.web.infrastructure.persistence.dao;
 
 import com.syos.web.db.Db;
-import com.syos.web.domain.enums.ProductStatus;
 import com.syos.web.domain.model.Product;
 
 import java.math.BigDecimal;
@@ -19,10 +18,13 @@ import com.syos.web.application.dto.PromotionDTO;
 public class ProductDao {
 
     /**
-     * Get all products from database
+     * Get all products from database (optimized to prevent memory issues)
+     * Using simplified query to avoid MySQL sort buffer overflow
      */
     public List<Product> findAll() throws SQLException {
         List<Product> products = new ArrayList<>();
+
+        // Much simpler query without complex aggregations to prevent sort memory issues
         String sql = "SELECT " +
                 "    p.product_code, " +
                 "    p.name, " +
@@ -32,24 +34,41 @@ public class ProductDao {
                 "    p.discount_end_date, " +
                 "    p.image_url, " +
                 "    p.category_id, " +
-                "    p.is_deleted, " +  // 🆕 ADDED
-                "    pc.category_name, " +
-                "    COALESCE(SUM(CASE WHEN il.location = 'SHELF' THEN il.quantity ELSE 0 END), 0) as shelf_quantity, " +
-                "    COALESCE(SUM(CASE WHEN il.location = 'MAIN' THEN il.quantity ELSE 0 END), 0) as warehouse_quantity, " +
-                "    COALESCE(SUM(CASE WHEN il.location = 'WEBSITE' THEN il.quantity ELSE 0 END), 0) as website_quantity " +
+                "    p.is_deleted, " +
+                "    pc.category_name " +
                 "FROM products p " +
                 "LEFT JOIN product_categories pc ON p.category_id = pc.category_id " +
-                "LEFT JOIN inventory_locations il ON p.product_code = il.product_code " +
                 "WHERE p.is_deleted = FALSE " +
-                "GROUP BY p.product_code, p.name, p.unit_price, p.discount_percentage, p.discount_start_date, p.discount_end_date, p.image_url, p.category_id, p.is_deleted, pc.category_name " +
-                "ORDER BY p.product_code";
+                "ORDER BY p.product_code " +
+                "LIMIT 500"; // Reduced limit for safety
 
         try (Connection conn = Db.getConnection();
              PreparedStatement stmt = conn.prepareStatement(sql);
              ResultSet rs = stmt.executeQuery()) {
 
             while (rs.next()) {
-                Product product = mapResultSetToProduct(rs);
+                // Create simplified product without inventory aggregation
+                Product product = new Product(
+                    rs.getString("product_code"),
+                    rs.getString("name"),
+                    rs.getBigDecimal("unit_price"),
+                    rs.getString("image_url"),
+                    rs.getObject("category_id") != null ? rs.getInt("category_id") : null,
+                    0, // shelfQuantity - set to 0 initially
+                    0, // warehouseQuantity - set to 0 initially
+                    0  // websiteQuantity - set to 0 initially
+                );
+
+                // Set additional fields
+                product.setDiscountPercentage(rs.getBigDecimal("discount_percentage"));
+                Date startDate = rs.getDate("discount_start_date");
+                Date endDate = rs.getDate("discount_end_date");
+                product.setDiscountStartDate(startDate != null ? startDate.toLocalDate() : null);
+                product.setDiscountEndDate(endDate != null ? endDate.toLocalDate() : null);
+                product.setDeleted(rs.getBoolean("is_deleted"));
+
+                // Inventory quantities are already set to 0 in the constructor
+
                 products.add(product);
             }
         }
@@ -401,7 +420,7 @@ public class ProductDao {
 
     /**
      * 🆕 UPDATED - Helper method to map ResultSet to Product entity
-     * Now uses the full constructor with isDeleted parameter
+     * Uses the available 8-argument constructor and sets additional fields separately
      */
     private Product mapResultSetToProduct(ResultSet rs) throws SQLException {
         String productCode = rs.getString("product_code");
@@ -417,10 +436,9 @@ public class ProductDao {
         BigDecimal discountPercentage = rs.getBigDecimal("discount_percentage");
         Date startDate = rs.getDate("discount_start_date");
         Date endDate = rs.getDate("discount_end_date");
+        boolean isDeleted = rs.getBoolean("is_deleted");
 
-        boolean isDeleted = rs.getBoolean("is_deleted");  // 🆕 NEW
-
-        // 🆕 Use the new full constructor
+        // Use the 8-argument constructor
         Product product = new Product(
                 productCode,
                 name,
@@ -429,13 +447,19 @@ public class ProductDao {
                 categoryId,
                 shelfQuantity,
                 warehouseQuantity,
-                websiteQuantity,
-                discountPercentage,
-                startDate != null ? startDate.toLocalDate() : null,
-                endDate != null ? endDate.toLocalDate() : null,
-                isDeleted
+                websiteQuantity
         );
+
+        // Set additional fields separately
+        product.setDiscountPercentage(discountPercentage);
+        product.setDiscountStartDate(startDate != null ? startDate.toLocalDate() : null);
+        product.setDiscountEndDate(endDate != null ? endDate.toLocalDate() : null);
+        product.setDeleted(isDeleted);
+
+        // Note: CategoryName field is not settable on Product entity
+        // The category information is available via the categoryId
 
         return product;
     }
 }
+

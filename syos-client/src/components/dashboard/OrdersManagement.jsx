@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { apiGetAllBills, apiGetBillDetails } from "../../services/api";
+import { apiGetAllBills } from "../../services/api";
 
 export default function OrdersManagement() {
     const [bills, setBills] = useState([]);
@@ -9,8 +9,6 @@ export default function OrdersManagement() {
     const [statusFilter, setStatusFilter] = useState("all");
     const [currentPage, setCurrentPage] = useState(1);
     const [itemsPerPage, setItemsPerPage] = useState(10);
-    const [selectedBill, setSelectedBill] = useState(null);
-    const [showDetailsModal, setShowDetailsModal] = useState(false);
 
     useEffect(() => {
         loadBills();
@@ -21,8 +19,20 @@ export default function OrdersManagement() {
             setLoading(true);
             setError("");
             const response = await apiGetAllBills();
+            console.log('📋 Bills API Response:', response);
             if (response.success) {
-                setBills(response.data || []);
+                const billsData = response.data || [];
+                console.log('📋 Bills loaded:', billsData.length);
+                console.log('📋 Sample bill data:', billsData.slice(0, 3).map(b => ({ 
+                    billNumber: b.billNumber,
+                    cashierId: b.cashierId,
+                    cashierName: b.cashierName,
+                    customerId: b.customerId,
+                    customerName: b.customerName,
+                    userId: b.userId,
+                    status: b.status 
+                })));
+                setBills(billsData);
             } else {
                 setError(response.message || "Failed to load bills");
             }
@@ -33,71 +43,14 @@ export default function OrdersManagement() {
         }
     };
 
-    const handleViewDetails = async (billNumber) => {
-        try {
-            const response = await apiGetBillDetails(billNumber);
-            console.log('📄 Bill Details Response:', response);
-            if (response.success) {
-                console.log('📄 Bill Data:', response.data);
-                setSelectedBill(response.data);
-                setShowDetailsModal(true);
-            } else {
-                setError(response.message || "Failed to load bill details");
-            }
-        } catch (err) {
-            console.error('Error loading bill:', err);
-            setError("Error loading bill details: " + err.message);
-        }
-    };
-
-    const downloadBillReceipt = () => {
-        if (!selectedBill) return;
-        
-        const bill = selectedBill;
-        const receiptContent = `
-========================================
-           SYOS SUPERMARKET
-          Receipt / Invoice
-========================================
-Bill Number: ${bill.billNumber}
-Date: ${bill.billDate || 'N/A'}
-Cashier: ${bill.cashierName || 'N/A'}
-========================================
-
-ITEMS:
-${bill.items?.map(item => 
-    `${item.productName || 'Product'}\n  Qty: ${item.quantity} x Rs. ${Number(item.unitPrice || 0).toFixed(2)} = Rs. ${Number(item.totalPrice || 0).toFixed(2)}`
-).join('\n\n') || 'No items'}
-
-========================================
-Subtotal: Rs. ${Number(bill.subtotal || 0).toFixed(2)}
-Total Amount: Rs. ${Number(bill.totalAmount || 0).toFixed(2)}
-Payment Method: ${(bill.paymentMethod || 'Cash').toUpperCase()}
-Amount Paid: Rs. ${Number(bill.amountPaid || 0).toFixed(2)}
-Change: Rs. ${Number(bill.changeAmount || 0).toFixed(2)}
-========================================
-Status: ${bill.status || 'Completed'}
-
-     Thank you for shopping with us!
-========================================
-        `;
-
-        const blob = new Blob([receiptContent], { type: 'text/plain' });
-        const url = URL.createObjectURL(blob);
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `Receipt_${bill.billNumber}.txt`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-    };
-
     // Filter bills
     const filteredBills = bills.filter(bill => {
         const matchesSearch = bill.billNumber?.toLowerCase().includes(searchQuery.toLowerCase()) ||
                             bill.cashierName?.toLowerCase().includes(searchQuery.toLowerCase());
-        const matchesStatus = statusFilter === "all" || bill.status === statusFilter;
+        let billStatus = (bill.orderStatus || bill.status || 'completed').toLowerCase();
+        // Map PENDING to COMPLETED
+        if (billStatus === 'pending') billStatus = 'completed';
+        const matchesStatus = statusFilter === "all" || billStatus === statusFilter;
         return matchesSearch && matchesStatus;
     });
 
@@ -110,14 +63,20 @@ Status: ${bill.status || 'Completed'}
     // Status counts
     const statusCounts = {
         all: bills.length,
-        pending: bills.filter(b => b.status?.toLowerCase() === "pending").length,
-        processing: bills.filter(b => b.status?.toLowerCase() === "processing").length,
-        completed: bills.filter(b => !b.status || b.status?.toLowerCase() === "completed").length,
-        cancelled: bills.filter(b => b.status?.toLowerCase() === "cancelled").length,
+        pending: 0, // PENDING is treated as COMPLETED
+        processing: bills.filter(b => (b.orderStatus || b.status)?.toLowerCase() === "processing").length,
+        completed: bills.filter(b => {
+            const status = (b.orderStatus || b.status || 'completed').toLowerCase();
+            return status === 'completed' || status === 'pending';
+        }).length,
+        cancelled: bills.filter(b => (b.orderStatus || b.status)?.toLowerCase() === "cancelled").length,
     };
 
     // Analytics calculations
-    const completedBills = bills.filter(b => !b.status || b.status?.toLowerCase() === 'completed');
+    const completedBills = bills.filter(b => {
+        const status = (b.orderStatus || b.status || 'completed').toLowerCase();
+        return status === 'completed' || status === 'pending';
+    });
     const totalRevenue = completedBills.reduce((sum, bill) => sum + Number(bill.totalAmount || 0), 0);
     const averageBillValue = completedBills.length > 0 ? totalRevenue / completedBills.length : 0;
     
@@ -128,7 +87,10 @@ Status: ${bill.status || 'Completed'}
         return billDate.startsWith(today);
     });
     const todayRevenue = todayBills
-        .filter(b => !b.status || b.status?.toLowerCase() === 'completed')
+        .filter(b => {
+            const status = (b.orderStatus || b.status || 'completed').toLowerCase();
+            return status === 'completed' || status === 'pending';
+        })
         .reduce((sum, bill) => sum + Number(bill.totalAmount || 0), 0);
 
     const getStatusBadge = (status) => {
@@ -156,6 +118,38 @@ Status: ${bill.status || 'Completed'}
                     justify-content: space-between;
                     align-items: center;
                     margin-bottom: 24px;
+                }
+
+                .btn-refresh {
+                    background: linear-gradient(135deg, #52B788 0%, #40916C 100%);
+                    color: white;
+                    border: none;
+                    padding: 12px 24px;
+                    border-radius: 10px;
+                    font-size: 14px;
+                    font-weight: 600;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    transition: all 0.3s ease;
+                    box-shadow: 0 4px 12px rgba(82, 183, 136, 0.3);
+                }
+
+                .btn-refresh:hover {
+                    background: linear-gradient(135deg, #40916C 0%, #2d6a4f 100%);
+                    box-shadow: 0 6px 16px rgba(82, 183, 136, 0.4);
+                    transform: translateY(-2px);
+                }
+
+                .btn-refresh:active {
+                    transform: translateY(0);
+                }
+
+                .btn-refresh:disabled {
+                    opacity: 0.6;
+                    cursor: not-allowed;
+                    transform: none;
                 }
 
                 .orders-title {
@@ -461,6 +455,13 @@ Status: ${bill.status || 'Completed'}
                         <span>🛒</span>
                         Bills/Orders Management
                     </h1>
+                    <button 
+                        className="btn-refresh" 
+                        onClick={loadBills}
+                        disabled={loading}
+                    >
+                        ↻ Refresh Orders
+                    </button>
                 </div>
 
                 {error && (
@@ -536,24 +537,6 @@ Status: ${bill.status || 'Completed'}
                             All <span>({statusCounts.all})</span>
                         </button>
                         <button
-                            className={`filter-tab ${statusFilter === "pending" ? "active" : ""}`}
-                            onClick={() => {
-                                setStatusFilter("pending");
-                                setCurrentPage(1);
-                            }}
-                        >
-                            Pending <span>({statusCounts.pending})</span>
-                        </button>
-                        <button
-                            className={`filter-tab ${statusFilter === "processing" ? "active" : ""}`}
-                            onClick={() => {
-                                setStatusFilter("processing");
-                                setCurrentPage(1);
-                            }}
-                        >
-                            Processing <span>({statusCounts.processing})</span>
-                        </button>
-                        <button
                             className={`filter-tab ${statusFilter === "completed" ? "active" : ""}`}
                             onClick={() => {
                                 setStatusFilter("completed");
@@ -583,18 +566,25 @@ Status: ${bill.status || 'Completed'}
                                 <th>Cashier</th>
                                 <th>Total Amount</th>
                                 <th>Status</th>
-                                <th>Actions</th>
                             </tr>
                         </thead>
                         <tbody>
                             {paginatedBills.length > 0 ? (
                                 paginatedBills.map(bill => {
-                                    const statusStyle = getStatusBadge(bill.status || 'completed');
+                                    let billStatus = (bill.orderStatus || bill.status || 'completed').toLowerCase();
+                                    // Map PENDING to COMPLETED
+                                    if (billStatus === 'pending') billStatus = 'completed';
+                                    const statusStyle = getStatusBadge(billStatus);
                                     return (
                                         <tr key={bill.billNumber}>
                                             <td className="order-id">{bill.billNumber}</td>
                                             <td>{bill.billDate || bill.createdAt || 'N/A'}</td>
-                                            <td>{bill.cashierName || bill.cashierId || 'N/A'}</td>
+                                            <td>
+                                                {bill.channel === 'ONLINE' ? 
+                                                    '🌐 Online Order' : 
+                                                    (bill.cashierName || 'N/A')
+                                                }
+                                            </td>
                                             <td style={{fontWeight: 700}}>Rs. {Number(bill.totalAmount || 0).toFixed(2)}</td>
                                             <td>
                                                 <span 
@@ -605,25 +595,15 @@ Status: ${bill.status || 'Completed'}
                                                         borderColor: statusStyle.border
                                                     }}
                                                 >
-                                                    {bill.status || 'completed'}
+                                                    {billStatus.toUpperCase()}
                                                 </span>
-                                            </td>
-                                            <td>
-                                                <div className="action-buttons">
-                                                    <button 
-                                                        className="btn-action btn-view"
-                                                        onClick={() => handleViewDetails(bill.billNumber)}
-                                                    >
-                                                        👁️ View
-                                                    </button>
-                                                </div>
                                             </td>
                                         </tr>
                                     );
                                 })
                             ) : (
                                 <tr>
-                                    <td colSpan="6" className="no-orders">
+                                    <td colSpan="5" className="no-orders">
                                         {bills.length === 0 ? "No bills found" : "No bills match your search"}
                                     </td>
                                 </tr>
@@ -711,273 +691,6 @@ Status: ${bill.status || 'Completed'}
                 </div>
                     </>
                 )}
-
-                {showDetailsModal && selectedBill && (
-                    <BillDetailsModal
-                        bill={selectedBill}
-                        onClose={() => {
-                            setShowDetailsModal(false);
-                            setSelectedBill(null);
-                        }}
-                        onDownload={downloadBillReceipt}
-                    />
-                )}
-            </div>
-        </>
-    );
-}
-
-// Bill Details Modal Component
-function BillDetailsModal({ bill, onClose, onDownload }) {
-    return (
-        <>
-            <style>{`
-                .bill-modal-overlay {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    background: rgba(0, 0, 0, 0.7);
-                    display: flex;
-                    align-items: center;
-                    justify-content: center;
-                    z-index: 9999;
-                }
-
-                .bill-modal {
-                    background: white;
-                    border-radius: 16px;
-                    padding: 32px;
-                    max-width: 600px;
-                    width: 90%;
-                    max-height: 85vh;
-                    overflow-y: auto;
-                    box-shadow: 0 8px 32px rgba(0,0,0,0.2);
-                }
-
-                .bill-header {
-                    text-align: center;
-                    border-bottom: 2px solid #52B788;
-                    padding-bottom: 16px;
-                    margin-bottom: 24px;
-                }
-
-                .bill-header h2 {
-                    font-size: 24px;
-                    color: #333;
-                    margin-bottom: 8px;
-                }
-
-                .bill-number {
-                    font-size: 18px;
-                    color: #52B788;
-                    font-weight: 700;
-                }
-
-                .bill-info {
-                    display: grid;
-                    grid-template-columns: 1fr 1fr;
-                    gap: 12px;
-                    margin-bottom: 24px;
-                    padding: 16px;
-                    background: #f9f9f9;
-                    border-radius: 8px;
-                }
-
-                .bill-info-item {
-                    display: flex;
-                    flex-direction: column;
-                }
-
-                .bill-info-label {
-                    font-size: 12px;
-                    color: #666;
-                    text-transform: uppercase;
-                    margin-bottom: 4px;
-                }
-
-                .bill-info-value {
-                    font-size: 14px;
-                    color: #333;
-                    font-weight: 600;
-                }
-
-                .bill-items {
-                    margin-bottom: 24px;
-                }
-
-                .bill-items h3 {
-                    font-size: 16px;
-                    color: #333;
-                    margin-bottom: 12px;
-                }
-
-                .bill-item {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 12px;
-                    background: white;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    margin-bottom: 8px;
-                }
-
-                .bill-item-name {
-                    font-weight: 600;
-                    color: #333;
-                }
-
-                .bill-item-details {
-                    font-size: 13px;
-                    color: #666;
-                    margin-top: 4px;
-                }
-
-                .bill-item-price {
-                    font-weight: 700;
-                    color: #52B788;
-                }
-
-                .bill-totals {
-                    border-top: 2px solid #e0e0e0;
-                    padding-top: 16px;
-                    margin-bottom: 24px;
-                }
-
-                .bill-total-row {
-                    display: flex;
-                    justify-content: space-between;
-                    padding: 8px 0;
-                    font-size: 14px;
-                }
-
-                .bill-total-row.grand-total {
-                    font-size: 20px;
-                    font-weight: 700;
-                    color: #52B788;
-                    border-top: 2px solid #52B788;
-                    padding-top: 12px;
-                    margin-top: 8px;
-                }
-
-                .bill-modal-actions {
-                    display: flex;
-                    gap: 12px;
-                }
-
-                .btn-download-bill {
-                    flex: 1;
-                    background: linear-gradient(135deg, #52B788 0%, #40916C 100%);
-                    color: white;
-                    border: none;
-                    padding: 14px;
-                    border-radius: 8px;
-                    font-weight: 700;
-                    font-size: 15px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .btn-download-bill:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 6px 16px rgba(82, 183, 136, 0.4);
-                }
-
-                .btn-close-bill {
-                    flex: 1;
-                    background: white;
-                    color: #666;
-                    border: 2px solid #e0e0e0;
-                    padding: 14px;
-                    border-radius: 8px;
-                    font-weight: 700;
-                    font-size: 15px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-
-                .btn-close-bill:hover {
-                    border-color: #52B788;
-                    color: #52B788;
-                }
-            `}</style>
-
-            <div className="bill-modal-overlay" onClick={onClose}>
-                <div className="bill-modal" onClick={(e) => e.stopPropagation()}>
-                    <div className="bill-header">
-                        <h2>📄 Receipt</h2>
-                        <div className="bill-number">{bill.billNumber}</div>
-                    </div>
-
-                    <div className="bill-info">
-                        <div className="bill-info-item">
-                            <div className="bill-info-label">Date & Time</div>
-                            <div className="bill-info-value">{bill.billDate || bill.createdAt || 'N/A'}</div>
-                        </div>
-                        <div className="bill-info-item">
-                            <div className="bill-info-label">Cashier</div>
-                            <div className="bill-info-value">{bill.cashierName || 'N/A'}</div>
-                        </div>
-                        <div className="bill-info-item">
-                            <div className="bill-info-label">Payment Method</div>
-                            <div className="bill-info-value">{(bill.paymentMethod || 'Cash').toUpperCase()}</div>
-                        </div>
-                        <div className="bill-info-item">
-                            <div className="bill-info-label">Status</div>
-                            <div className="bill-info-value">{bill.status || 'Completed'}</div>
-                        </div>
-                    </div>
-
-                    <div className="bill-items">
-                        <h3>Items Purchased</h3>
-                        {bill.items && bill.items.length > 0 ? (
-                            bill.items.map((item, index) => (
-                                <div key={index} className="bill-item">
-                                    <div>
-                                        <div className="bill-item-name">{item.productName || 'Product'}</div>
-                                        <div className="bill-item-details">
-                                            Qty: {item.quantity} × Rs. {Number(item.unitPrice || 0).toFixed(2)}
-                                        </div>
-                                    </div>
-                                    <div className="bill-item-price">
-                                        Rs. {Number(item.totalPrice || (item.quantity * item.unitPrice) || 0).toFixed(2)}
-                                    </div>
-                                </div>
-                            ))
-                        ) : (
-                            <p style={{ color: '#888', textAlign: 'center', padding: '20px' }}>No items found</p>
-                        )}
-                    </div>
-
-                    <div className="bill-totals">
-                        <div className="bill-total-row">
-                            <span>Subtotal:</span>
-                            <span>Rs. {Number(bill.subtotal || 0).toFixed(2)}</span>
-                        </div>
-                        <div className="bill-total-row">
-                            <span>Amount Paid:</span>
-                            <span>Rs. {Number(bill.amountPaid || 0).toFixed(2)}</span>
-                        </div>
-                        <div className="bill-total-row">
-                            <span>Change:</span>
-                            <span>Rs. {Number(bill.changeAmount || 0).toFixed(2)}</span>
-                        </div>
-                        <div className="bill-total-row grand-total">
-                            <span>Total Amount:</span>
-                            <span>Rs. {Number(bill.totalAmount || 0).toFixed(2)}</span>
-                        </div>
-                    </div>
-
-                    <div className="bill-modal-actions">
-                        <button className="btn-download-bill" onClick={onDownload}>
-                            ⬇️ Download Receipt
-                        </button>
-                        <button className="btn-close-bill" onClick={onClose}>
-                            Close
-                        </button>
-                    </div>
-                </div>
             </div>
         </>
     );

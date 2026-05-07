@@ -15,7 +15,24 @@ export default function Home() {
             const data = await apiMe();
 
             if (data?.loggedIn) {
-                setUser(data);
+                // Map role_id to role name for display
+                const roleId = data?.role_id || data?.roleId;
+                const roleMap = {
+                    1: 'ADMIN',
+                    2: 'CASHIER',
+                    3: 'CUSTOMER',
+                    4: 'CUSTOMER'
+                };
+                
+                // Add role property to user object
+                const userData = {
+                    ...data,
+                    role: roleMap[roleId] || 'UNKNOWN',
+                    userId: data.user_id || data.userId
+                };
+                
+                console.log("✅ User data with role:", userData);
+                setUser(userData);
             } else {
                 nav("/login");
             }
@@ -36,6 +53,21 @@ export default function Home() {
             }
         }
     }, [user, loading, nav]);
+
+    // Toggle the modern marketplace admin theme on the document body
+    useEffect(() => {
+        if (!loading) return;
+        const roleId = user?.role_id || user?.roleId;
+        if (roleId === 1) {
+            document.body.classList.add('marketplace-theme');
+        } else {
+            document.body.classList.remove('marketplace-theme');
+        }
+
+        return () => {
+            document.body.classList.remove('marketplace-theme');
+        };
+    }, [user, loading]);
 
     const onLogout = async () => {
         console.log("🚪 Home.jsx: Logout initiated");

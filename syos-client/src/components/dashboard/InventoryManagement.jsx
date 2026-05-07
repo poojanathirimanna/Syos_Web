@@ -59,10 +59,15 @@ export default function InventoryManagement() {
         }
     };
 
-    const filteredItems = inventory?.inventoryLocations?.filter(item =>
+    const filteredItems = (inventory?.inventoryLocations?.filter(item =>
         item.productCode?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         item.productName?.toLowerCase().includes(searchTerm.toLowerCase())
-    ) || [];
+    ) || []).sort((a, b) => {
+        // Sort by purchase date, newest first (most recent at top)
+        const dateA = new Date(a.purchaseDate || 0);
+        const dateB = new Date(b.purchaseDate || 0);
+        return dateB - dateA;
+    });
 
     // Pagination calculations
     const totalPages = Math.ceil(filteredItems.length / itemsPerPage);
@@ -172,7 +177,7 @@ export default function InventoryManagement() {
                     margin-bottom: 24px;
                 }
 
-                .btn-primary, .btn-secondary {
+                .btn-primary, .btn-secondary, .btn-refresh {
                     padding: 12px 24px;
                     border: none;
                     border-radius: 8px;
@@ -199,6 +204,18 @@ export default function InventoryManagement() {
                 }
 
                 .btn-secondary:hover {
+                    background: #f0fdf4;
+                }
+
+                .btn-refresh {
+                    background: white;
+                    color: #52B788;
+                    border: 2px solid #52B788;
+                    padding: 12px 20px;
+                    margin-left: auto;
+                }
+
+                .btn-refresh:hover {
                     background: #f0fdf4;
                 }
 
@@ -593,6 +610,13 @@ export default function InventoryManagement() {
                             </button>
                             <button className="btn-secondary" onClick={() => setShowTransferModal(true)}>
                                 🔄 Transfer Stock
+                            </button>
+                            <button 
+                                className="btn-refresh" 
+                                onClick={loadInventory}
+                                title="Refresh Inventory"
+                            >
+                                ↻ Refresh
                             </button>
                         </div>
 

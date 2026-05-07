@@ -197,4 +197,15 @@ public class BillDTO {
     public void setDeliveryPhone(String deliveryPhone) {
         this.deliveryPhone = deliveryPhone;
     }
+
+    /**
+     * Get status for frontend display
+     * Returns orderStatus if it exists (for online orders), otherwise defaults to "completed"
+     */
+    public String getStatus() {
+        if (orderStatus != null && !orderStatus.trim().isEmpty()) {
+            return orderStatus.toLowerCase(); // frontend expects lowercase
+        }
+        return "completed"; // default for in-store bills
+    }
 }

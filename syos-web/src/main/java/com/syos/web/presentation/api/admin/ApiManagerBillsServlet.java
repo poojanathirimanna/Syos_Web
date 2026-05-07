@@ -9,6 +9,7 @@ import jakarta.servlet.annotation.WebServlet;
 import jakarta.servlet.http.HttpServlet;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import jakarta.servlet.http.HttpSession;
 
 import java.io.IOException;
 import java.util.List;
@@ -35,6 +36,23 @@ public class ApiManagerBillsServlet extends HttpServlet {
         resp.setContentType("application/json");
         resp.setCharacterEncoding("UTF-8");
 
+        // Check authentication and admin role
+        HttpSession session = req.getSession(false);
+        if (session == null || session.getAttribute("username") == null) {
+            ApiResponse<Object> error = ApiResponse.error("Unauthorized: Please login");
+            resp.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
+            resp.getWriter().write(gson.toJson(error));
+            return;
+        }
+
+        Integer roleId = (Integer) session.getAttribute("roleId");
+        if (roleId == null || (roleId != 1 && roleId != 2)) {  // 1=ADMIN, 2=MANAGER/CASHIER
+            ApiResponse<Object> error = ApiResponse.error("Forbidden: Admin/Manager access required");
+            resp.setStatus(HttpServletResponse.SC_FORBIDDEN);
+            resp.getWriter().write(gson.toJson(error));
+            return;
+        }
+
         try {
             String pathInfo = req.getPathInfo();
 
@@ -51,9 +69,11 @@ public class ApiManagerBillsServlet extends HttpServlet {
                 resp.getWriter().write(gson.toJson(response));
 
             } else {
-                // Get single bill by bill_number (not ID!)
-                String billNumber = pathInfo.substring(1);  // ✅ Changed from Long to String
-                BillDTO bill = billDao.getBillByNumber(billNumber);  // ✅ Correct method name
+                // Get single bill by bill_number - ADMIN CAN ACCESS ANY BILL
+                String billNumber = pathInfo.substring(1);
+                System.out.println("🔍 Admin requesting bill details: " + billNumber);
+
+                BillDTO bill = billDao.getBillByNumber(billNumber);
 
                 if (bill == null) {
                     ApiResponse<Object> error = ApiResponse.error("Bill not found");
@@ -61,6 +81,8 @@ public class ApiManagerBillsServlet extends HttpServlet {
                     resp.getWriter().write(gson.toJson(error));
                     return;
                 }
+
+                System.out.println("✅ Admin: Bill found and returned: " + billNumber);
 
                 ApiResponse<BillDTO> response = ApiResponse.success(
                         "Bill retrieved successfully",
@@ -72,7 +94,7 @@ public class ApiManagerBillsServlet extends HttpServlet {
             }
 
         } catch (NumberFormatException e) {
-            ApiResponse<Object> error = ApiResponse.error("Invalid bill ID");
+            ApiResponse<Object> error = ApiResponse.error("Invalid bill number format");
             resp.setStatus(HttpServletResponse.SC_BAD_REQUEST);
             resp.getWriter().write(gson.toJson(error));
 
@@ -80,7 +102,8 @@ public class ApiManagerBillsServlet extends HttpServlet {
             ApiResponse<Object> error = ApiResponse.error("Failed to retrieve bills: " + e.getMessage());
             resp.setStatus(HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
             resp.getWriter().write(gson.toJson(error));
-            System.err.println("Error in ApiManagerBillsServlet.doGet: " + e.getMessage());
+            System.err.println("❌ Error in ApiManagerBillsServlet.doGet: " + e.getMessage());
+            e.printStackTrace();
         }
     }
 

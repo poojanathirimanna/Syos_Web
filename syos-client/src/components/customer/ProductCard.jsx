@@ -27,7 +27,7 @@ export default function ProductCard({ product, onAddToCart, onAddToWishlist, onV
                 .product-image-container {
                     position: relative;
                     width: 100%;
-                    padding-top: 100%;
+                    padding-top: 75%;
                     background: #f5f5f5;
                     overflow: hidden;
                 }

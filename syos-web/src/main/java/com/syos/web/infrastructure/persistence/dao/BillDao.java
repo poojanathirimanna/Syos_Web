@@ -364,7 +364,7 @@ public class BillDao {
     }
 
     /**
-     * Get all bills (for manager)
+     * Get all bills (for manager) - Updated to include order status
      */
     public List<BillDTO> getAllBills() throws SQLException {
         List<BillDTO> bills = new ArrayList<>();
@@ -372,7 +372,7 @@ public class BillDao {
         String sql = "SELECT b.bill_number, b.transaction_date, b.total_amount, " +
                 "COALESCE(b.cashier_id, b.customer_id) as user_id, " +
                 "u.full_name, b.channel, b.subtotal, b.discount_amount, " +
-                "b.amount_paid, b.change_amount " +
+                "b.amount_paid, b.change_amount, b.order_status, b.payment_status " +
                 "FROM bills b " +
                 "LEFT JOIN users u ON (b.cashier_id = u.user_id OR b.customer_id = u.user_id) " +
                 "ORDER BY b.transaction_date DESC";
@@ -393,6 +393,17 @@ public class BillDao {
                 bill.setDiscountAmount(rs.getBigDecimal("discount_amount"));
                 bill.setAmountPaid(rs.getBigDecimal("amount_paid"));
                 bill.setChangeAmount(rs.getBigDecimal("change_amount"));
+
+                // Add order status information
+                bill.setOrderStatus(rs.getString("order_status"));
+                bill.setPaymentStatus(rs.getString("payment_status"));
+
+                // Debug logging for cancelled orders
+                if ("CANCELLED".equals(rs.getString("order_status"))) {
+                    System.out.println("🚫 Admin: Retrieved cancelled order: " + bill.getBillNumber() +
+                                     " with status: " + rs.getString("order_status"));
+                }
+
                 bills.add(bill);
             }
         }

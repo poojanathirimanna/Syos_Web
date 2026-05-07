@@ -17,6 +17,7 @@ async function parseJsonSafe(response) {
 
 // LOGIN
 export async function apiLogin(username, password) {
+    console.log('🔐 LOGIN: Attempting login for:', username);
     const res = await fetch(`${BASE_URL}/api/login`, {
         method: "POST",
         headers: {
@@ -26,7 +27,10 @@ export async function apiLogin(username, password) {
         body: JSON.stringify({ username, password }),
     });
 
-    return await parseJsonSafe(res);
+    const result = await parseJsonSafe(res);
+    console.log('✅ LOGIN: Backend response:', result);
+    console.log('🍪 LOGIN: Session cookie set:', document.cookie);
+    return result;
 }
 
 // REGISTER
@@ -65,12 +69,15 @@ export async function apiGoogleLogin(credential) {
 
 // CHECK SESSION
 export async function apiMe() {
+    console.log('🔍 API: Checking session with /api/me');
     const res = await fetch(`${BASE_URL}/api/me`, {
         method: "GET",
         credentials: "include",
     });
 
-    return await parseJsonSafe(res);
+    const result = await parseJsonSafe(res);
+    console.log('👤 API: Session data returned:', result);
+    return result;
 }
 
 // LOGOUT
@@ -218,10 +225,10 @@ export async function apiDeleteCategory(categoryId) {
 // GET INVENTORY (with optional filters)
 export async function apiGetInventory(params = {}) {
     const queryString = new URLSearchParams(params).toString();
-    const url = queryString 
-        ? `${BASE_URL}/api/admin/inventory?${queryString}` 
+    const url = queryString
+        ? `${BASE_URL}/api/admin/inventory?${queryString}`
         : `${BASE_URL}/api/admin/inventory`;
-    
+
     const res = await fetch(url, {
         method: "GET",
         credentials: "include",
@@ -247,7 +254,7 @@ export async function apiReceiveStock(data) {
 // TRANSFER STOCK
 export async function apiTransferStock(data) {
     console.log('🔧 API: apiTransferStock called with:', data);
-    
+
     const res = await fetch(`${BASE_URL}/api/admin/inventory/transfer`, {
         method: "POST",
         headers: {
@@ -258,10 +265,10 @@ export async function apiTransferStock(data) {
     });
 
     console.log('📡 API: Transfer response status:', res.status, res.statusText);
-    
+
     const result = await parseJsonSafe(res);
     console.log('📦 API: Transfer parsed response:', result);
-    
+
     return result;
 }
 
@@ -333,12 +340,30 @@ export async function apiDeactivateCashier(userId) {
 
 // GET ALL BILLS (Admin/Manager)
 export async function apiGetAllBills() {
+    console.log('🔐 API: Requesting /api/admin/bills with credentials');
     const res = await fetch(`${BASE_URL}/api/admin/bills`, {
         method: "GET",
         credentials: "include",
     });
+    
+    console.log('📡 API: Response status:', res.status);
+    console.log('📡 API: Response headers:', Object.fromEntries(res.headers.entries()));
 
     return await parseJsonSafe(res);
+}
+
+// GET BILL DETAILS (Admin - any bill)
+export async function apiGetAdminBillDetails(billNumber) {
+    try {
+        const res = await fetch(`${BASE_URL}/api/admin/bills/${billNumber}`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
 }
 
 // GET CASHIER BILLS (Cashier - own bills only)
@@ -351,20 +376,24 @@ export async function apiGetCashierBills() {
     return await parseJsonSafe(res);
 }
 
-// GET BILL DETAILS
+// GET BILL DETAILS (Cashier - own bills only)
 export async function apiGetBillDetails(billNumber) {
-    const res = await fetch(`${BASE_URL}/api/cashier/bills/${billNumber}`, {
-        method: "GET",
-        credentials: "include",
-    });
-
-    return await parseJsonSafe(res);
+    try {
+        const res = await fetch(`${BASE_URL}/api/cashier/bills/${billNumber}`, {
+            method: "GET",
+            credentials: "include",
+        });
+        return await parseJsonSafe(res);
+    } catch (error) {
+        console.error("❌ API Error:", error);
+        return { success: false, message: error.message };
+    }
 }
 
 // CREATE BILL (Cashier)
 export async function apiCreateBill(billData) {
     console.log('🔧 API: apiCreateBill called with data:', billData);
-    
+
     const res = await fetch(`${BASE_URL}/api/cashier/bills`, {
         method: "POST",
         headers: {
@@ -375,10 +404,10 @@ export async function apiCreateBill(billData) {
     });
 
     console.log('📡 API: Response status:', res.status, res.statusText);
-    
+
     const result = await parseJsonSafe(res);
     console.log('📦 API: Parsed response:', result);
-    
+
     return result;
 }
 
@@ -480,10 +509,10 @@ export async function apiGetCustomerProducts(params = {}) {
         if (params.sortBy) queryParams.append('sortBy', params.sortBy);
         if (params.page) queryParams.append('page', params.page);
         if (params.limit) queryParams.append('limit', params.limit);
-        
+
         const queryString = queryParams.toString();
         const url = `${BASE_URL}/api/customer/products${queryString ? '?' + queryString : ''}`;
-        
+
         const res = await fetch(url, {
             method: "GET",
             credentials: "include",
@@ -808,3 +837,152 @@ export async function apiAddProductReview(reviewData) {
         return { success: false, message: error.message };
     }
 }
+
+/* =========================
+   REPORTING APIs (Backend-Powered)
+   ========================= */
+
+// REPORTS: Get Sales Summary
+export async function apiGetSalesReport(period = 'today') {
+    try {
+        const response = await fetch(`${BASE_URL}/api/admin/reports/sales/summary?period=${period}`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error("❌ Sales Report Error:", error);
+        return { success: false, message: error.message, data: null };
+    }
+}
+
+// REPORTS: Get Top Products
+export async function apiGetTopProducts(limit = 10, period = 'month', sortBy = 'quantity') {
+    try {
+        const response = await fetch(
+            `${BASE_URL}/api/admin/reports/products/top?period=${period}&limit=${limit}&sortBy=${sortBy}`,
+            {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error("❌ Top Products Report Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// REPORTS: Get Inventory Alerts
+export async function apiGetInventoryAlerts() {
+    try {
+        const response = await fetch(`${BASE_URL}/api/admin/reports/inventory/alerts`, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error("❌ Inventory Alerts Report Error:", error);
+        return {
+            success: false,
+            message: error.message,
+            data: { lowStock: [], expiringSoon: [], summary: { lowStockCount: 0, expiringSoonCount: 0 } }
+        };
+    }
+}
+
+// REPORTS: Get Category Performance
+export async function apiGetCategoryPerformance(period = 'month') {
+    try {
+        const response = await fetch(
+            `${BASE_URL}/api/admin/reports/categories/performance?period=${period}`,
+            {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error("❌ Category Performance Report Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// REPORTS: Get Sales by Hour (Peak Hours)
+export async function apiGetPeakHours(period = 'today') {
+    try {
+        const response = await fetch(
+            `${BASE_URL}/api/admin/reports/sales/hourly?period=${period}`,
+            {
+                method: 'GET',
+                credentials: 'include',
+                headers: { 'Content-Type': 'application/json' }
+            }
+        );
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error("❌ Peak Hours Report Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
+// REPORTS: Get Cashier Performance (Optional - if implemented in backend)
+export async function apiGetCashierPerformance(period = 'month', cashierId = null) {
+    try {
+        let url = `${BASE_URL}/api/admin/reports/cashiers/performance?period=${period}`;
+        if (cashierId) {
+            url += `&cashierId=${cashierId}`;
+        }
+
+        const response = await fetch(url, {
+            method: 'GET',
+            credentials: 'include',
+            headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (!response.ok) {
+            throw new Error(`HTTP error! status: ${response.status}`);
+        }
+
+        const result = await response.json();
+        return result;
+    } catch (error) {
+        console.error("❌ Cashier Performance Report Error:", error);
+        return { success: false, message: error.message, data: [] };
+    }
+}
+
